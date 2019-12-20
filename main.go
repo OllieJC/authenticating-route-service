@@ -11,6 +11,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+	//"io"
+	//"html/template"
 )
 
 const (
@@ -38,7 +40,7 @@ func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler 
 	reverseProxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			forwardedURL := req.Header.Get(CF_FORWARDED_URL_HEADER)
-			sigHeader := req.Header.Get(CF_PROXY_SIGNATURE_HEADER)
+			//sigHeader := req.Header.Get(CF_PROXY_SIGNATURE_HEADER)
 
 			var body []byte
 			var err error
@@ -49,7 +51,7 @@ func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler 
 				}
 				req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
-			logRequest(forwardedURL, sigHeader, string(body), req.Header, skipSslValidation)
+			//logRequest(forwardedURL, sigHeader, string(body), req.Header, skipSslValidation)
 
 			err = sleep()
 			if err != nil {
@@ -98,26 +100,43 @@ func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (*http.Response
 	var err error
 	var res *http.Response
 
-	log.Printf("Forwarding to: %s\n", request.URL.String())
-	res, err = lrt.transport.RoundTrip(request)
-	if err != nil {
-		return nil, err
+	if request.URL.Path == "/auth/login" {
+		//t, _ := template.ParseFiles("auth/login.html")
+		//var wr io.Writer
+		//t.Execute(wr, nil)
+
+		//var p []byte
+		//wr.Write(p)
+
+		res := &http.Response{
+			  Status: "OK",
+				StatusCode: 200,
+        Body: ioutil.NopCloser(bytes.NewReader([]byte("login"))),
+    }
+		return res, nil
+	} else {
+
+		log.Printf("Forwarding to: %s\n", request.URL.String())
+		res, err = lrt.transport.RoundTrip(request)
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.Fatalln(err.Error())
+		}
+		log.Println("")
+		log.Printf("Response Headers: %#v\n", res.Header)
+		log.Println("")
+		log.Printf("Response Body: %s\n", string(body))
+		log.Println("")
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+		log.Println("Sending response to GoRouter...")
+
+		return res, err
 	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-	log.Println("")
-	log.Printf("Response Headers: %#v\n", res.Header)
-	log.Println("")
-	log.Printf("Response Body: %s\n", string(body))
-	log.Println("")
-	res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
-	log.Println("Sending response to GoRouter...")
-
-	return res, err
 }
 
 func sleep() error {
