@@ -49,14 +49,16 @@ var _ = Describe("Main", func() {
 		Expect(string(bodyBytes)).To(Equal(expected))
 	})
 
-	It("should return an login page when going to '/login'", func() {
+	It("should return an login page when going to '/auth/login'", func() {
 		const (
 			skipSslValidation = false
 			path              = "/auth/login"
+			notexpected       = "not-seen"
+			expected          = "login"
 		)
 
 		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("not-seen"))
+			w.Write([]byte(notexpected))
 		}))
 		defer backend.Close()
 
@@ -79,6 +81,7 @@ var _ = Describe("Main", func() {
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(string(bodyBytes)).To(ContainSubstring("login"))
+		Expect(string(bodyBytes)).To(Not(ContainSubstring(notexpected)))
+		Expect(string(bodyBytes)).To(ContainSubstring(expected))
 	})
 })
