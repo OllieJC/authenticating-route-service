@@ -1,6 +1,6 @@
-# Example Route Service
+# Authenticating Route Service
 
-An example route service for Cloud Foundry.
+An authenticating route service for Cloud Foundry.
 
 ## Route Service Overview
 
@@ -17,21 +17,22 @@ This example route service uses the new headers/features that have been added to
 - Push your app which will be associated with the route service.
 - Create a user-provided route service ([see docs](http://docs.cloudfoundry.org/services/route-services.html#user-provided))
 - Bind the route service to the route (domain/hostname)
-- Tail the logs of this route service in order to verify that requests to your app go through the route service. The example logging route service will log requests and responses to and from your app.
+- Go to "/" and you should get redirected to "/auth/login"
 
 ## Environment Variables
 
-### ROUTE_SERVICE_SLEEP_MILLI
-
-If you set this environment variable in the running app, the route service
-will sleep for that many milliseconds before proxying the request. This can
-be used to simulate route services that are slow to respond.
-
-Example (10 seconds):
+### GOOGLE_OAUTH_CLIENT_ID
 
 ```sh
-cf set-env logging-route-service ROUTE_SERVICE_SLEEP_MILLI 10000
-cf restage logging-route-service
+cf set-env authenticating-route-service GOOGLE_OAUTH_CLIENT_ID xxx
+cf restage authenticating-route-service
+```
+
+### GOOGLE_OAUTH_CLIENT_SECRET
+
+```sh
+cf set-env authenticating-route-service GOOGLE_OAUTH_CLIENT_SECRET xxx
+cf restage authenticating-route-service
 ```
 
 ### SKIP_SSL_VALIDATION
@@ -42,6 +43,6 @@ By default the route service will attempt to validate certificates.
 Example:
 
 ```sh
-cf set-env logging-route-service SKIP_SSL_VALIDATION true
-cf restart logging-route-service
+cf set-env authenticating-route-service SKIP_SSL_VALIDATION true
+cf restart authenticating-route-service
 ```

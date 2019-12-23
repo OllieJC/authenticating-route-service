@@ -10,9 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
-	//"io"
-	//"html/template"
+	"strings"
 )
 
 const (
@@ -53,11 +51,6 @@ func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler 
 			}
 			//logRequest(forwardedURL, sigHeader, string(body), req.Header, skipSslValidation)
 
-			err = sleep()
-			if err != nil {
-				log.Fatalln(err.Error())
-			}
-
 			// Note that url.Parse is decoding any url-encoded characters.
 			url, err := url.Parse(forwardedURL)
 			if err != nil {
@@ -97,23 +90,14 @@ func NewLoggingRoundTripper(skipSslValidation bool) *LoggingRoundTripper {
 }
 
 func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
-	var err error
-	var res *http.Response
+	var (
+		err error
+		res *http.Response
+	)
 
-	if request.URL.Path == "/auth/login" {
-		//t, _ := template.ParseFiles("auth/login.html")
-		//var wr io.Writer
-		//t.Execute(wr, nil)
+	if strings.HasPrefix(request.URL.Path, "/auth") {
+		return AuthRequestDecision(request)
 
-		//var p []byte
-		//wr.Write(p)
-
-		res := &http.Response{
-			  Status: "OK",
-				StatusCode: 200,
-        Body: ioutil.NopCloser(bytes.NewReader([]byte("login"))),
-    }
-		return res, nil
 	} else {
 
 		log.Printf("Forwarding to: %s\n", request.URL.String())
@@ -124,8 +108,9 @@ func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (*http.Response
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			log.Fatalln(err.Error())
+			return HTTPErrorResponse(err), nil
 		}
+
 		log.Println("")
 		log.Printf("Response Headers: %#v\n", res.Header)
 		log.Println("")
@@ -135,21 +120,6 @@ func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (*http.Response
 
 		log.Println("Sending response to GoRouter...")
 
-		return res, err
+		return res, nil
 	}
-}
-
-func sleep() error {
-	sleepMilliString := os.Getenv("ROUTE_SERVICE_SLEEP_MILLI")
-	if sleepMilliString != "" {
-		sleepMilli, err := strconv.ParseInt(sleepMilliString, 0, 64)
-		if err != nil {
-			return err
-		}
-
-		log.Printf("Sleeping for %d milliseconds\n", sleepMilli)
-		time.Sleep(time.Duration(sleepMilli) * time.Millisecond)
-
-	}
-	return nil
 }

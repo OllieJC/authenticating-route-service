@@ -4,4 +4,4 @@ applications:
   - go_buildpack
   env:
     GOVERSION: 1.x
-    GOPACKAGENAME: github.com/cloudfoundry-samples/logging-route-service
+    GOPACKAGENAME: github.com/OllieJC/authenticating-route-service
