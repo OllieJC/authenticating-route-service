@@ -61,8 +61,9 @@ var _ = Describe("AuthDirector", func() {
 	Context("AuthRequestDecision", func() {
 		It("should return an login page when get '/auth/login'", func() {
 			const (
-				path     = "/auth/login"
-				expected = "login"
+				path      = "/auth/login"
+				expected  = "login"
+				expected2 = `<link href="/auth/assets/all.min.css" rel="stylesheet" />`
 			)
 
 			var err error
@@ -77,6 +78,7 @@ var _ = Describe("AuthDirector", func() {
 			bodyBytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(bodyBytes)).To(ContainSubstring(expected))
+			Expect(string(bodyBytes)).To(ContainSubstring(expected2))
 		})
 
 		It("should return a redirect when post '/auth/login'", func() {
@@ -100,6 +102,95 @@ var _ = Describe("AuthDirector", func() {
 			bodyBytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(bodyBytes)).ToNot(ContainSubstring(notexpected))
+		})
+
+		It("should return a CSS doc when get '/auth/assets/all.min.css'", func() {
+			const (
+				path                = "/auth/assets/all.min.css"
+				expectedContent     = ".govuk-link"
+				expectedContentType = "text/css"
+				expectedStatusCode  = 200
+			)
+
+			var err error
+
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080%s", path), nil)
+
+			resp, err := s.AuthRequestDecision(req)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
+
+			Expect(resp.Body).NotTo(BeNil())
+			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(bodyBytes)).To(ContainSubstring(expectedContent))
+
+			Expect(resp.Header.Get("Content-Type")).To(Equal(expectedContentType))
+		})
+
+		It("should return a JS doc when get '/auth/assets/all.js'", func() {
+			const (
+				path                = "/auth/assets/all.js"
+				expectedContent     = "function("
+				expectedContentType = "application/javascript"
+				expectedStatusCode  = 200
+			)
+
+			var err error
+
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080%s", path), nil)
+
+			resp, err := s.AuthRequestDecision(req)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
+
+			Expect(resp.Body).NotTo(BeNil())
+			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(bodyBytes)).To(ContainSubstring(expectedContent))
+
+			Expect(resp.Header.Get("Content-Type")).To(Equal(expectedContentType))
+		})
+
+		It("should return an image when get '/auth/assets/images/govuk-crest.png'", func() {
+			const (
+				path                = "/auth/assets/images/govuk-crest.png"
+				expectedContentType = "image/png"
+				expectedStatusCode  = 200
+			)
+
+			var err error
+
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080%s", path), nil)
+
+			resp, err := s.AuthRequestDecision(req)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
+
+			Expect(resp.Body).NotTo(BeNil())
+			_, err = ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(resp.Header.Get("Content-Type")).To(Equal(expectedContentType))
+		})
+
+		It("should return a 404 when get '/auth/assets/not-exist'", func() {
+			const (
+				path               = "/auth/assets/not-exist"
+				expectedStatusCode = 404
+			)
+
+			var err error
+
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080%s", path), nil)
+
+			resp, err := s.AuthRequestDecision(req)
+
+			Expect(err).To(HaveOccurred())
+			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
 		})
 	})
 })

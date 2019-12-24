@@ -19,8 +19,16 @@ func RedirectResponse(resp *http.Response, status int, url string) {
 
 func HTTPErrorResponse(err error) *http.Response {
 	return &http.Response{
-		Status:     "OK",
+		Status:     "Error",
 		StatusCode: 500,
 		Body:       ioutil.NopCloser(bytes.NewReader([]byte(err.Error()))),
+	}
+}
+
+func HTTPNotFoundResponse(err error) *http.Response {
+	return &http.Response{
+		Status:     "Not Found",
+		StatusCode: 404,
+		Body:       ioutil.NopCloser(bytes.NewReader([]byte("Not found"))),
 	}
 }
