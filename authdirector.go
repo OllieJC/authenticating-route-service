@@ -5,7 +5,6 @@ import (
 	"errors"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,19 +17,19 @@ type authPageData struct {
 	AssetsPath string
 }
 
-func AuthIDPDirector(requ *http.Request, resp *http.Response) error {
-	if requ.Method != "POST" {
+func AuthIDPDirector(request *http.Request, response *http.Response) error {
+	if request.Method != "POST" {
 		return errors.New("Incorrect method")
 	}
 
-	email := requ.Form.Get("email")
+	email := request.Form.Get("email")
 
 	if email == "" {
 		return errors.New("No email set")
 	}
 
 	if strings.HasSuffix(email, "@digital.cabinet-office.gov.uk") {
-		OAuthGoogleLogin(resp)
+		OAuthGoogleLogin(response)
 		return nil
 	} else {
 		return errors.New("Unknown domain")
@@ -73,7 +72,7 @@ func getFileContentType(fStr string) (string, error) {
 	return contentType, nil
 }
 
-func returnAsset(request *http.Request) (*http.Response, error) {
+func returnAsset(request *http.Request, response *http.Response) error {
 	var err error
 
 	valFile := regexp.MustCompile(`^/auth/assets/(?P<file>(?:(?:fonts|images)/)?[\w\.-]+\.[\w\.-]+)`)
@@ -92,42 +91,46 @@ func returnAsset(request *http.Request) (*http.Response, error) {
 			} else {
 				// Get the content
 				contentType, err = getFileContentType(fStr)
-				if err != nil {
-					return HTTPErrorResponse(err), err
-				}
 			}
 
 			dat, err := ioutil.ReadFile(fStr)
 			if err == nil {
-				res := &http.Response{
-					Status:     "OK",
-					StatusCode: 200,
-					Body:       ioutil.NopCloser(bytes.NewReader(dat)),
-				}
-				res.Header = http.Header{}
-				res.Header.Add("Content-Type", contentType)
-				return res, nil
+				response.Status = "200 OK"
+				response.StatusCode = 200
+				response.Body = ioutil.NopCloser(bytes.NewReader(dat))
+				response.Header.Add("Content-Type", contentType)
+				return nil
 			}
 		}
 	}
 
-	err = errors.New("No asset found with that filename")
-	return HTTPNotFoundResponse(err), err
+	if err == nil {
+		response.Status = "Not Found"
+		response.StatusCode = 404
+		response.Body = nil
+	}
+
+	return err
 }
 
 func AuthRequestDecision(request *http.Request) (*http.Response, error) {
-	res := &http.Response{}
-	res.Header = http.Header{}
+	var err error
+
+	response := EmptyHTTPResponse(request)
 
 	if strings.HasPrefix(request.URL.Path, "/auth/assets") && request.Method == "GET" {
-		return returnAsset(request)
+
+		err = returnAsset(request, response)
+		if err != nil {
+			return nil, err
+		}
+		return response, nil
 
 	} else if request.URL.Path == "/auth/login" && request.Method == "GET" {
 
 		t, err := template.ParseGlob("./templates/*.html")
 		if err != nil {
-			log.Println("Cannot parse templates:", err)
-			return HTTPErrorResponse(err), err
+			return nil, err
 		}
 
 		var tpl bytes.Buffer
@@ -136,30 +139,28 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 			"/auth/assets",
 		}
 		if err := t.ExecuteTemplate(&tpl, "login.html", apd); err != nil {
-			return HTTPErrorResponse(err), err
+			return nil, err
 		}
 
-		res = &http.Response{
-			Status:     "OK",
-			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewReader(tpl.Bytes())),
-		}
-		return res, nil
+		response.Status = "200 OK"
+		response.StatusCode = 200
+		response.Body = ioutil.NopCloser(bytes.NewReader(tpl.Bytes()))
+		return response, nil
 
 	} else if request.URL.Path == "/auth/login" && request.Method == "POST" {
 
-		err := AuthIDPDirector(request, res)
+		err := AuthIDPDirector(request, response)
 		if err != nil {
-			return HTTPErrorResponse(err), err
+			return nil, err
 		}
-		return res, nil
+		return response, nil
 
 	} else if request.URL.Path == "/auth/google/callback" {
 
-		OauthGoogleCallback(request, res)
-		return res, nil
+		OauthGoogleCallback(request, response)
+		return response, nil
 
 	}
 
-	return res, nil
+	return nil, nil
 }

@@ -89,37 +89,38 @@ func NewLoggingRoundTripper(skipSslValidation bool) *LoggingRoundTripper {
 	}
 }
 
-func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
-	var (
-		err error
-		res *http.Response
-	)
+func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (response *http.Response, err error) {
 
 	if strings.HasPrefix(request.URL.Path, "/auth") {
-		return AuthRequestDecision(request)
+
+		response, err = AuthRequestDecision(request)
+		if err != nil {
+			return HTTPErrorResponse(err), nil
+		}
 
 	} else {
 
 		log.Printf("Forwarding to: %s\n", request.URL.String())
-		res, err = lrt.transport.RoundTrip(request)
+		response, err = lrt.transport.RoundTrip(request)
 		if err != nil {
-			return nil, err
+			return HTTPErrorResponse(err), nil
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			return HTTPErrorResponse(err), nil
 		}
 
 		log.Println("")
-		log.Printf("Response Headers: %#v\n", res.Header)
+		log.Printf("Response Headers: %#v\n", response.Header)
 		log.Println("")
 		log.Printf("Response Body: %s\n", string(body))
 		log.Println("")
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
 		log.Println("Sending response to GoRouter...")
 
-		return res, nil
 	}
+
+	return response, nil
 }

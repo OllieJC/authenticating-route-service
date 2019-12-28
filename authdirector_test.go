@@ -189,7 +189,7 @@ var _ = Describe("AuthDirector", func() {
 
 			resp, err := s.AuthRequestDecision(req)
 
-			Expect(err).To(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
 		})
 	})
