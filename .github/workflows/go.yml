@@ -27,7 +27,7 @@ jobs:
         fi
 
     - name: Vet
-      run: go bet
+      run: go vet
 
     - name: Test
       run: ginkgo
