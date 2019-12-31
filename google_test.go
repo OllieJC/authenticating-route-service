@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,6 +24,25 @@ var _ = Describe("Google", func() {
 		Expect(data).Should(HaveLen(16))
 	})
 
+	It("should attempt to query Google", func() {
+		response := &http.Response{}
+		response.Header = http.Header{}
+
+		cookieStr := s.GenerateStateOauthCookie(response)
+
+		rcookie := response.Header.Get("Set-Cookie")
+		request := &http.Request{Header: http.Header{"Cookie": []string{rcookie}}}
+
+		request.Form = url.Values{}
+		request.Form.Add("state", cookieStr)
+		request.Form.Add("code", "4/uwEID0d1_BYHEE5UkjsFW08bKwhCXw5U_ajdadKBoygAwUKhT4_YSLO6pR6CO5UJFbw5m8s7DeGiKylK3Ugb1mk")
+
+		cbResp, err := s.OauthGoogleCallback(request, response)
+
+		Expect(err).To(HaveOccurred())
+		Expect(cbResp).To(Equal(""))
+	})
+
 	It("should set an oauthstate cookie, location header and redirect with OAuthGoogleLogin", func() {
 		const (
 			expectedHostnameInRedirect = "accounts.google.com"
@@ -32,7 +52,7 @@ var _ = Describe("Google", func() {
 		r.Header = http.Header{}
 		s.OAuthGoogleLogin(r)
 
-		Expect(r.StatusCode).To(Equal(http.StatusTemporaryRedirect))
+		Expect(r.StatusCode).To(Equal(http.StatusSeeOther))
 
 		rcookie := r.Header.Get("Set-Cookie")
 		request := &http.Request{Header: http.Header{"Cookie": []string{rcookie}}}

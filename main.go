@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,47 +16,60 @@ import (
 )
 
 const (
-	DEFAULT_PORT              = "8080"
+	DEFAULT_PORT              = 8080
 	CF_FORWARDED_URL_HEADER   = "X-Cf-Forwarded-Url"
 	CF_PROXY_SIGNATURE_HEADER = "X-Cf-Proxy-Signature"
+	CF_PROXY_METADATA_HEADER  = "X-CF-Proxy-Metadata"
 )
 
+var DebugOut io.Writer = ioutil.Discard
+
 func main() {
-	port := os.Getenv("PORT")
-	if len(port) == 0 {
+	var (
+		skipSslValidation bool
+		port              int64
+	)
+
+	port, _ = strconv.ParseInt(os.Getenv("PORT"), 10, 16)
+	if port == 0 {
 		port = DEFAULT_PORT
 	}
-	skipSslValidation, _ := strconv.ParseBool(os.Getenv("SKIP_SSL_VALIDATION"))
+
+	ssv := os.Getenv("SKIP_SSL_VALIDATION")
+	if len(ssv) != 0 {
+		skipSslValidation, _ = strconv.ParseBool(ssv)
+	} else {
+		skipSslValidation = true
+	}
 
 	log.SetOutput(os.Stdout)
 
 	roundTripper := NewLoggingRoundTripper(skipSslValidation)
 	proxy := NewProxy(roundTripper, skipSslValidation)
 
-	log.Fatal(http.ListenAndServe(":"+port, proxy))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), proxy))
 }
 
 func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler {
 	reverseProxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			forwardedURL := req.Header.Get(CF_FORWARDED_URL_HEADER)
-			//sigHeader := req.Header.Get(CF_PROXY_SIGNATURE_HEADER)
+			debug("NewProxy:1: %s\n", forwardedURL)
 
 			var body []byte
 			var err error
 			if req.Body != nil {
 				body, err = ioutil.ReadAll(req.Body)
 				if err != nil {
-					log.Fatalln(err.Error())
+					log.Fatalln("NewProxy:err:", err.Error())
 				}
 				req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
-			//logRequest(forwardedURL, sigHeader, string(body), req.Header, skipSslValidation)
 
 			// Note that url.Parse is decoding any url-encoded characters.
 			url, err := url.Parse(forwardedURL)
 			if err != nil {
-				log.Fatalln(err.Error())
+				log.Fatalln("NewProxy:err:", err.Error())
 			}
 
 			req.URL = url
@@ -63,17 +78,6 @@ func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler 
 		Transport: transport,
 	}
 	return reverseProxy
-}
-
-func logRequest(forwardedURL, sigHeader, body string, headers http.Header, skipSslValidation bool) {
-	log.Printf("Skip ssl validation set to %t", skipSslValidation)
-	log.Println("Received request: ")
-	log.Printf("%s: %s\n", CF_FORWARDED_URL_HEADER, forwardedURL)
-	log.Printf("%s: %s\n", CF_PROXY_SIGNATURE_HEADER, sigHeader)
-	log.Println("")
-	log.Printf("Headers: %#v\n", headers)
-	log.Println("")
-	log.Printf("Request Body: %s\n", body)
 }
 
 type LoggingRoundTripper struct {
@@ -91,36 +95,53 @@ func NewLoggingRoundTripper(skipSslValidation bool) *LoggingRoundTripper {
 
 func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (response *http.Response, err error) {
 
-	if strings.HasPrefix(request.URL.Path, "/auth") {
+	path := request.URL.EscapedPath()
+
+	debug("RoundTrip:1: %s\n", request.URL)
+
+	if strings.HasPrefix(path, "/auth") {
+
+		debug("RoundTrip:2: Auth request to: %s\n", request.URL.String())
 
 		response, err = AuthRequestDecision(request)
 		if err != nil {
-			return HTTPErrorResponse(err), nil
+			response = HTTPErrorResponse(err)
 		}
 
 	} else {
 
-		log.Printf("Forwarding to: %s\n", request.URL.String())
-		response, err = lrt.transport.RoundTrip(request)
-		if err != nil {
-			return HTTPErrorResponse(err), nil
+		if CheckCookie(request) {
+
+			debug("RoundTrip:2: Forwarding to: %s", request.URL.String())
+
+			response, err = lrt.transport.RoundTrip(request)
+			if err != nil {
+				response = HTTPErrorResponse(err)
+			}
+
+			body, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				response = HTTPErrorResponse(err)
+			} else {
+				response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+			}
+
+		} else {
+
+			debug("RoundTrip:2: Redirecting to login page")
+			response = EmptyHTTPResponse(request)
+			RedirectResponse(response, http.StatusSeeOther, "/auth/login")
+
 		}
-
-		body, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return HTTPErrorResponse(err), nil
-		}
-
-		log.Println("")
-		log.Printf("Response Headers: %#v\n", response.Header)
-		log.Println("")
-		log.Printf("Response Body: %s\n", string(body))
-		log.Println("")
-		response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
-		log.Println("Sending response to GoRouter...")
-
 	}
+
+	sigHeader := request.Header.Get(CF_PROXY_SIGNATURE_HEADER)
+	metaHeader := request.Header.Get(CF_PROXY_METADATA_HEADER)
+
+	response.Header.Add(CF_PROXY_SIGNATURE_HEADER, sigHeader)
+	response.Header.Add(CF_PROXY_METADATA_HEADER, metaHeader)
+
+	debug("RoundTrip:3: Responding...")
 
 	return response, nil
 }

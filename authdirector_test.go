@@ -26,27 +26,27 @@ var _ = Describe("AuthDirector", func() {
 		It("should return an error with no form data in post request", func() {
 			err := s.AuthIDPDirector(req, resp)
 
-			Expect(err).Should(MatchError("No email set"))
+			Expect(err).Should(MatchError("Email address not recognised"))
 		})
 
 		It("should return an error with an invalid email domain", func() {
-			req.Form = url.Values{
+			req.PostForm = url.Values{
 				"email": {"test@invalid.uk"},
 			}
 			err := s.AuthIDPDirector(req, resp)
 
-			Expect(err).Should(MatchError("Unknown domain"))
+			Expect(err).Should(MatchError("Email address not recognised"))
 		})
 
 		It("should return an redirect with a valid email domain", func() {
 
-			req.Form = url.Values{
+			req.PostForm = url.Values{
 				"email": {"test@digital.cabinet-office.gov.uk"},
 			}
 			err := s.AuthIDPDirector(req, resp)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode).To(Equal(http.StatusTemporaryRedirect))
+			Expect(resp.StatusCode).To(Equal(http.StatusSeeOther))
 		})
 
 		It("should return an error if not a post request", func() {
@@ -62,7 +62,7 @@ var _ = Describe("AuthDirector", func() {
 		It("should return an login page when get '/auth/login'", func() {
 			const (
 				path      = "/auth/login"
-				expected  = "login"
+				expected  = `id="email"`
 				expected2 = `<link href="/auth/assets/all.min.css" rel="stylesheet" />`
 			)
 
@@ -77,6 +77,7 @@ var _ = Describe("AuthDirector", func() {
 			Expect(resp.Body).NotTo(BeNil())
 			bodyBytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
+
 			Expect(string(bodyBytes)).To(ContainSubstring(expected))
 			Expect(string(bodyBytes)).To(ContainSubstring(expected2))
 		})
@@ -84,14 +85,14 @@ var _ = Describe("AuthDirector", func() {
 		It("should return a redirect when post '/auth/login'", func() {
 			const (
 				path        = "/auth/login"
-				notexpected = "login"
+				notexpected = "govuk-input--error"
 			)
 
 			var err error
 
 			req, _ := http.NewRequest("POST", fmt.Sprintf("http://localhost:8080%s", path), nil)
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-			req.Form = url.Values{
+			req.PostForm = url.Values{
 				"email": {"test@digital.cabinet-office.gov.uk"},
 			}
 

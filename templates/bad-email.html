@@ -10,7 +10,10 @@
     <span id="email-hint" class="govuk-hint">
       We’ll only use this to direct you to the right login provider
     </span>
-    <input class="govuk-input" id="email" name="email" type="email" aria-describedby="email-hint" autocomplete="email" spellcheck="false">
+    <span id="email-error" class="govuk-error-message">
+      <span class="govuk-visually-hidden">Error:</span> email address not recognised
+    </span>
+    <input class="govuk-input govuk-input--error" id="email" name="email" type="email" value="" aria-describedby="email-hint email-error" autocomplete="email" spellcheck="false">
   </div>
   <div>
     <button class="govuk-button" data-module="govuk-button">

@@ -25,7 +25,7 @@ var _ = Describe("HTTPHelper", func() {
 
 		bodyBytes, err := ioutil.ReadAll(response.Body)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(string(bodyBytes)).To(Equal(errStr))
+		Expect(string(bodyBytes)).To(ContainSubstring(errStr))
 	})
 
 	It("should return an 404 page with HTTPErrorResponse", func() {
