@@ -7,7 +7,34 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 )
+
+var _securityOption map[string]string
+
+const noSetSecOpt = "NO-SET"
+
+func securityOption(option string) (string, string) {
+	if _securityOption == nil {
+		_securityOption = make(map[string]string)
+	}
+
+	if option != "" {
+		optEnvVar := strings.Replace(strings.ToUpper(option), "-", "_", -1)
+		val, ok := _securityOption[optEnvVar]
+
+		if ok == false {
+			val = os.Getenv(fmt.Sprintf("ENV_SEC_OPT_%s", optEnvVar))
+			_securityOption[optEnvVar] = val
+		}
+
+		//fmt.Printf("Setting header %s to %s\n", option, val)
+		return option, val
+	}
+
+	return option, ""
+}
 
 type templatePageData struct {
 	Title      string
@@ -82,4 +109,22 @@ func HTTPNotFoundResponse(err error) *http.Response {
 	tpd.ErrorText = "Element not found"
 	t, _ := TemplateResponse("error.html", http.StatusNotFound, tpd)
 	return t
+}
+
+func AddSecurityHeaders(response *http.Response) {
+	addSecurityHeader(response, "X-Xss-Protection", "1; mode=block")
+	addSecurityHeader(response, "X-Content-Type-Options", "nosniff")
+	addSecurityHeader(response, "X-Frame-Options", "DENY")
+	addSecurityHeader(response, "Content-Security-Policy", "default-src 'self'")
+	addSecurityHeader(response, "Referrer-Policy", "strict-origin-when-cross-origin")
+	addSecurityHeader(response, "Feature-Policy", "vibrate 'none'; geolocation 'none'; microphone 'none'; camera 'none'; payment 'none'; notifications 'none'; ")
+}
+
+func addSecurityHeader(response *http.Response, header string, defaultStr string) {
+	_, val := securityOption(header)
+	if val == "" {
+		response.Header.Add(header, defaultStr)
+	} else if val != noSetSecOpt {
+		response.Header.Add(header, val)
+	}
 }

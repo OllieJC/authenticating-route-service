@@ -135,7 +135,12 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 	if strings.HasPrefix(request.URL.Path, "/auth/status") {
 
-		response.Body = ioutil.NopCloser(bytes.NewReader([]byte("Up")))
+		body := []byte("false")
+		if CheckCookie(request) {
+			body = []byte("true")
+		}
+		response.StatusCode = http.StatusOK
+		response.Body = ioutil.NopCloser(bytes.NewReader(body))
 
 	} else if strings.HasPrefix(request.URL.Path, "/auth/assets") && request.Method == "GET" {
 

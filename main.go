@@ -141,6 +141,8 @@ func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (response *http
 	response.Header.Add(CF_PROXY_SIGNATURE_HEADER, sigHeader)
 	response.Header.Add(CF_PROXY_METADATA_HEADER, metaHeader)
 
+	AddSecurityHeaders(response)
+
 	debug("RoundTrip:3: Responding...")
 
 	return response, nil
