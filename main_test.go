@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	s "authenticating-route-service"
+	i "authenticating-route-service/internal"
 )
 
 var _ = Describe("Main", func() {
@@ -36,7 +37,7 @@ var _ = Describe("Main", func() {
 		_, err := url.Parse(backend.URL)
 		Expect(err).NotTo(HaveOccurred())
 
-		roundTripper := s.NewLoggingRoundTripper(skipSslValidation)
+		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
 		proxyHandler := s.NewProxy(roundTripper, skipSslValidation)
 
 		frontend := httptest.NewServer(proxyHandler)
@@ -47,13 +48,13 @@ var _ = Describe("Main", func() {
 		req.Header.Add(sigHeader, expectedSig)
 		req.Header.Add(metaHeader, expectedMeta)
 
-		sess := s.NewCustomSession()
+		sess := i.NewCustomSession()
 		sess.Provider = "Test"
 		sess.UserData = "abc123"
 		b, err := json.Marshal(sess)
 		Expect(err).NotTo(HaveOccurred())
 
-		encString, err := s.Encrypt(string(b), "")
+		encString, err := i.Encrypt(string(b), "")
 		Expect(err).NotTo(HaveOccurred())
 
 		cookie := &http.Cookie{Name: "_session", Value: encString, Expires: time.Now().Add(6 * time.Hour)}
@@ -94,7 +95,7 @@ var _ = Describe("Main", func() {
 		_, err := url.Parse(backend.URL)
 		Expect(err).NotTo(HaveOccurred())
 
-		roundTripper := s.NewLoggingRoundTripper(skipSslValidation)
+		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
 		proxyHandler := s.NewProxy(roundTripper, skipSslValidation)
 
 		frontend := httptest.NewServer(proxyHandler)
@@ -143,7 +144,7 @@ var _ = Describe("Main", func() {
 		_, err := url.Parse(backend.URL)
 		Expect(err).NotTo(HaveOccurred())
 
-		roundTripper := s.NewLoggingRoundTripper(skipSslValidation)
+		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
 		proxyHandler := s.NewProxy(roundTripper, skipSslValidation)
 
 		frontend := httptest.NewServer(proxyHandler)
@@ -151,7 +152,7 @@ var _ = Describe("Main", func() {
 
 		response := &http.Response{}
 		response.Header = http.Header{}
-		cookieStr := s.GenerateStateOauthCookie(response)
+		cookieStr := i.GenerateStateOauthCookie(response)
 		rcookie := response.Header.Get("Set-Cookie")
 
 		reqFeUrl := fmt.Sprintf("%s/auth/google/callback", frontend.URL)

@@ -1,6 +1,7 @@
-package main
+package internal
 
 import (
+	. "authenticating-route-service/pkg/debugprint"
 	"bytes"
 	"errors"
 	"io/ioutil"
@@ -18,7 +19,7 @@ var (
 
 func AuthIDPDirector(request *http.Request, response *http.Response) error {
 
-	debug("AuthIDPDirector:1: Request type: %s", request.Method)
+	Debugfln("AuthIDPDirector:1: Request type: %s", request.Method)
 
 	if request.Method != "POST" {
 		return errBadMethod
@@ -33,12 +34,12 @@ func AuthIDPDirector(request *http.Request, response *http.Response) error {
 	if strings.HasSuffix(email, "@digital.cabinet-office.gov.uk") {
 		OAuthGoogleLogin(response)
 
-		debug("AuthIDPDirector:2: Returning good email.")
+		Debugfln("AuthIDPDirector:2: Returning good email.")
 
 		return nil
 	}
 
-	debug("AuthIDPDirector:2: Returning bad email.")
+	Debugfln("AuthIDPDirector:2: Returning bad email.")
 
 	return errBadEmail
 }
@@ -82,16 +83,16 @@ func getFileContentType(fStr string) (string, error) {
 func returnAsset(request *http.Request) (*http.Response, error) {
 	var err error
 
-	debug("returnAsset:1: Start return.")
+	Debugfln("returnAsset:1: Start return.")
 
 	valFile := regexp.MustCompile(`^/auth/assets/(?P<file>(?:(?:fonts|images)/)?[\w\.-]+\.[\w\.-]+)`)
 	extFile := valFile.FindStringSubmatch(request.URL.Path)
 
 	if len(extFile) == 2 && extFile[1] != "" {
 
-		debug("returnAsset:2: Getting %s.\n", extFile)
+		Debugfln("returnAsset:2: Getting %s.", extFile)
 
-		fStr := filepath.Join("templates/assets", filepath.Clean(extFile[1]))
+		fStr := filepath.Join(StaticAssetPath, filepath.Clean(extFile[1]))
 
 		if exists(fStr) {
 			var contentType string
@@ -128,7 +129,7 @@ func returnAsset(request *http.Request) (*http.Response, error) {
 
 func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
-	debug("AuthRequestDecision:1: Starting...")
+	Debugfln("AuthRequestDecision:1: Starting...")
 
 	response := EmptyHTTPResponse(request)
 	var err error
@@ -144,13 +145,13 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 	} else if strings.HasPrefix(request.URL.Path, "/auth/assets") && request.Method == "GET" {
 
-		debug("AuthRequestDecision:2: Asset")
+		Debugfln("AuthRequestDecision:2: Asset")
 
 		return returnAsset(request)
 
 	} else if request.URL.Path == "/auth/login" && request.Method == "GET" {
 
-		debug("AuthRequestDecision:3: GET /auth/login")
+		Debugfln("AuthRequestDecision:3: GET /auth/login")
 
 		tpd := NewTemplatePageData()
 		tpd.Title = "Login"
@@ -159,9 +160,16 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 			return HTTPErrorResponse(err), err
 		}
 
+	} else if request.URL.Path == "/auth/logout" {
+
+		Debugfln("AuthRequestDecision:3: GET /auth/logout")
+
+		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
+		RemoveCookie(response)
+
 	} else if request.URL.Path == "/auth/login" && request.Method == "POST" {
 
-		debug("AuthRequestDecision:4: POST /auth/login")
+		Debugfln("AuthRequestDecision:4: POST /auth/login")
 
 		err = AuthIDPDirector(request, response)
 
@@ -172,19 +180,19 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 		}
 
 		if err != nil {
-			debug("AuthRequestDecision:4:err: %s\n", err.Error())
+			Debugfln("AuthRequestDecision:4:err: %s", err.Error())
 
 			return HTTPErrorResponse(err), err
 		}
 
 	} else if request.URL.Path == "/auth/google/callback" {
 
-		debug("AuthRequestDecision:5: /auth/google/callback")
+		Debugfln("AuthRequestDecision:5: /auth/google/callback")
 
 		cbResp, err := OauthGoogleCallback(request, response)
 
 		if err != nil {
-			debug("AuthRequestDecision:5:err: %s\n", err.Error())
+			Debugfln("AuthRequestDecision:5:err: %s", err.Error())
 
 			return HTTPErrorResponse(err), err
 		}
@@ -193,12 +201,12 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 		RedirectResponse(response, http.StatusSeeOther, "/")
 
 	} else {
-		debug("AuthRequestDecision:6: Response not found")
+		Debugfln("AuthRequestDecision:6: Response not found")
 
 		response = HTTPNotFoundResponse(nil)
 	}
 
-	debug("AuthRequestDecision:7: Returning response")
+	Debugfln("AuthRequestDecision:7: Returning response")
 
 	return response, nil
 }

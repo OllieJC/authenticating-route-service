@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"bytes"
@@ -8,32 +8,43 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
-var _securityOption map[string]string
+var (
+	_securityOption map[string]string
+)
 
 const noSetSecOpt = "NO-SET"
 
 func securityOption(option string) (string, string) {
-	if _securityOption == nil {
-		_securityOption = make(map[string]string)
-	}
+	var val string
 
-	if option != "" {
-		optEnvVar := strings.Replace(strings.ToUpper(option), "-", "_", -1)
-		val, ok := _securityOption[optEnvVar]
-
-		if ok == false {
-			val = os.Getenv(fmt.Sprintf("ENV_SEC_OPT_%s", optEnvVar))
-			_securityOption[optEnvVar] = val
-		}
-
-		//fmt.Printf("Setting header %s to %s\n", option, val)
+	if option == "" {
 		return option, val
 	}
 
-	return option, ""
+	optEnvVar := strings.Replace(strings.ToUpper(option), "-", "_", -1)
+	eso := fmt.Sprintf("ENV_SEC_OPT_%s", optEnvVar)
+
+	if InternalTest {
+		val = os.Getenv(eso)
+	} else {
+		if _securityOption == nil {
+			_securityOption = make(map[string]string)
+		}
+
+		var ok bool
+		val, ok = _securityOption[optEnvVar]
+
+		if ok == false {
+			val = os.Getenv(eso)
+			_securityOption[optEnvVar] = val
+		}
+	}
+
+	return option, val
 }
 
 type templatePageData struct {
@@ -67,7 +78,7 @@ func EmptyHTTPResponse(request *http.Request) (response *http.Response) {
 func TemplateResponse(templateFileName string, responseCode int, tpd templatePageData) (*http.Response, error) {
 	response := EmptyHTTPResponse(nil)
 
-	t, err := template.ParseGlob("./templates/*.html")
+	t, err := template.ParseGlob(filepath.Join(TemplatePath, "*.html"))
 	if err != nil {
 		log.Fatalf("Cannot parse templates: %#v", err)
 		return nil, err
@@ -117,7 +128,7 @@ func AddSecurityHeaders(response *http.Response) {
 	addSecurityHeader(response, "X-Frame-Options", "DENY")
 	addSecurityHeader(response, "Content-Security-Policy", "default-src 'self'")
 	addSecurityHeader(response, "Referrer-Policy", "strict-origin-when-cross-origin")
-	addSecurityHeader(response, "Feature-Policy", "vibrate 'none'; geolocation 'none'; microphone 'none'; camera 'none'; payment 'none'; notifications 'none'; ")
+	addSecurityHeader(response, "Feature-Policy", "vibrate 'none'; geolocation 'none'; microphone 'none'; camera 'none'; payment 'none'; notifications 'none';")
 }
 
 func addSecurityHeader(response *http.Response, header string, defaultStr string) {

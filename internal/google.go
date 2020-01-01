@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"encoding/base64"
@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	. "authenticating-route-service/pkg/debugprint"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -31,13 +33,13 @@ func setRedirectURL() {
 		setVal = fmt.Sprintf(redirectFormatString, "https", redirectDomain)
 		googleOauthConfig.RedirectURL = setVal
 	}
-	debug("setRedirectURL:1: Setting to: %s\n", setVal)
+	Debugfln("setRedirectURL:1: Setting to: %s", setVal)
 }
 
 const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
 func OAuthGoogleLogin(response *http.Response) {
-	debug("OAuthGoogleLogin:1: Start...")
+	Debugfln("OAuthGoogleLogin:1: Start...")
 
 	// Create oauthState cookie
 	oauthState := GenerateStateOauthCookie(response)
@@ -53,26 +55,26 @@ func OAuthGoogleLogin(response *http.Response) {
 }
 
 func OauthGoogleCallback(request *http.Request, response *http.Response) (string, error) {
-	debug("OauthGoogleCallback:1: Start...")
+	Debugfln("OauthGoogleCallback:1: Start...")
 
 	oauthState, err := request.Cookie("oauthstate")
 
 	if err != nil {
-		debug("OauthGoogleCallback:err: %#v", err)
+		Debugfln("OauthGoogleCallback:err: %#v", err)
 		return "", fmt.Errorf("ERROR: OauthGoogleCallback: state bad")
 	} else if request.FormValue("state") != oauthState.Value {
-		debug("OauthGoogleCallback:err: state bad")
+		Debugfln("OauthGoogleCallback:err: state bad")
 		return "", fmt.Errorf("ERROR: OauthGoogleCallback: state bad")
 	}
 
 	data, err := getUserDataFromGoogle(request.FormValue("code"))
 	if err != nil {
-		debug("OauthGoogleCallback:err: %#v", err)
+		Debugfln("OauthGoogleCallback:err: %#v", err)
 
 		return "", fmt.Errorf("ERROR: OauthGoogleCallback: code bad - %s", err.Error())
 	}
 
-	debug("OauthGoogleCallback:2: No error...")
+	Debugfln("OauthGoogleCallback:2: No error...")
 
 	if len(data) > 0 {
 
@@ -81,7 +83,7 @@ func OauthGoogleCallback(request *http.Request, response *http.Response) (string
 	} else {
 
 		err = errors.New("unable to get Google profile")
-		debug("OauthGoogleCallback:err: %#v\n", err)
+		Debugfln("OauthGoogleCallback:err: %#v", err)
 		return "", err
 
 	}
@@ -90,7 +92,7 @@ func OauthGoogleCallback(request *http.Request, response *http.Response) (string
 func GenerateStateOauthCookie(resp *http.Response) string {
 	var expiration = time.Now().Add(365 * 24 * time.Hour)
 
-	debug("GenerateStateOauthCookie:1: Adding cookie with time until: %s\n", expiration.String())
+	Debugfln("GenerateStateOauthCookie:1: Adding cookie with time until: %s", expiration.String())
 
 	b, err := generateRandomBytes(16)
 	if err != nil {
@@ -107,41 +109,41 @@ func GenerateStateOauthCookie(resp *http.Response) string {
 
 func getUserDataFromGoogle(code string) ([]byte, error) {
 	// Use code to get token and get user info from Google.
-	debug("getUserDataFromGoogle:1: Starting...")
+	Debugfln("getUserDataFromGoogle:1: Starting...")
 
 	setRedirectURL()
 
 	token, err := googleOauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
-		debug("getUserDataFromGoogle:1:err: %#v\n", err)
+		Debugfln("getUserDataFromGoogle:1:err: %#v", err)
 		return nil, fmt.Errorf("code exchange wrong: %s", err.Error())
 	}
 
-	debug("getUserDataFromGoogle:2: Trying get google profile...")
+	Debugfln("getUserDataFromGoogle:2: Trying get google profile...")
 
 	client := googleOauthConfig.Client(oauth2.NoContext, token)
 	response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 
-	debug("getUserDataFromGoogle:2: Userinfo status code: %d\n", response.StatusCode)
+	Debugfln("getUserDataFromGoogle:2: Userinfo status code: %d", response.StatusCode)
 
 	if err != nil {
-		debug("getUserDataFromGoogle:2:err: %#v", err)
+		Debugfln("getUserDataFromGoogle:2:err: %#v", err)
 		return nil, fmt.Errorf("failed getting user info: %s", err.Error())
 	}
 
-	debug("getUserDataFromGoogle:3: Trying to return google profile...")
+	Debugfln("getUserDataFromGoogle:3: Trying to return google profile...")
 
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		debug("getUserDataFromGoogle:3:err: %#v", err)
+		Debugfln("getUserDataFromGoogle:3:err: %#v", err)
 		return nil, fmt.Errorf("failed read response: %s", err.Error())
 	} else {
-		debug("getUserDataFromGoogle:3: Response length: %d", len(contents))
+		Debugfln("getUserDataFromGoogle:3: Response length: %d", len(contents))
 	}
 
 	defer response.Body.Close()
 
-	debug("getUserDataFromGoogle:4: Returning google profile")
+	Debugfln("getUserDataFromGoogle:4: Returning google profile")
 
 	return contents, nil
 }

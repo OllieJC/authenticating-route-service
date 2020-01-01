@@ -1,6 +1,7 @@
-package main
+package internal
 
 import (
+	. "authenticating-route-service/pkg/debugprint"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -104,11 +105,11 @@ func Decrypt(data string, passphrase string) ([]byte, error) {
 func CheckCookie(request *http.Request) bool {
 	bRes := false
 
-	debug("CheckCookie: Starting...")
+	Debugfln("CheckCookie: Starting...")
 
 	cookie, err := request.Cookie(GetSessionCookieName())
 	if err != nil {
-		debug("CheckCookie: %#v", err)
+		Debugfln("CheckCookie: %#v", err)
 		return false
 	}
 
@@ -133,7 +134,7 @@ func CheckCookie(request *http.Request) bool {
 }
 
 func AddCookie(request *http.Request, response *http.Response, provider string, userdata string) {
-	debug("AddCookie: Starting...\n")
+	Debugfln("AddCookie: Starting...")
 
 	if CheckCookie(request) == false {
 		sess := NewCustomSession()
@@ -153,6 +154,14 @@ func AddCookie(request *http.Request, response *http.Response, provider string, 
 		cookie := &http.Cookie{Name: GetSessionCookieName(), Value: encString, Expires: expiryTime, Path: "/"}
 		response.Header.Add("Set-Cookie", cookie.String())
 
-		debug("AddCookie: Setting '%s'\n", GetSessionCookieName())
+		Debugfln("AddCookie: Setting '%s'", GetSessionCookieName())
 	}
+}
+
+func RemoveCookie(response *http.Response) {
+	Debugfln("RemoveCookie: Starting...")
+
+	expiryTime := time.Now().AddDate(-1, -1, -1)
+	cookie := &http.Cookie{Name: GetSessionCookieName(), Value: "", Expires: expiryTime, Path: "/", MaxAge: -1}
+	response.Header.Add("Set-Cookie", cookie.String())
 }

@@ -1,4 +1,4 @@
-package main_test
+package internal_test
 
 import (
 	"encoding/base64"
@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s "authenticating-route-service"
+	s "authenticating-route-service/internal"
 )
 
 var _ = Describe("Google", func() {
@@ -35,7 +35,7 @@ var _ = Describe("Google", func() {
 
 		request.Form = url.Values{}
 		request.Form.Add("state", cookieStr)
-		request.Form.Add("code", "4/uwEID0d1_BYHEE5UkjsFW08bKwhCXw5U_ajdadKBoygAwUKhT4_YSLO6pR6CO5UJFbw5m8s7DeGiKylK3Ugb1mk")
+		request.Form.Add("code", "xxx")
 
 		cbResp, err := s.OauthGoogleCallback(request, response)
 

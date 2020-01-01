@@ -1,4 +1,4 @@
-package main_test
+package internal_test
 
 import (
 	"fmt"
@@ -11,12 +11,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s "authenticating-route-service"
+	s "authenticating-route-service/internal"
 )
 
 var _ = Describe("AuthDirector", func() {
 	Context("AuthIDPDirector", func() {
-
 		req, _ := http.NewRequest("POST", "http://localhost:8080/auth/non-exist", nil)
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 

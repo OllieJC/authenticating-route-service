@@ -1,10 +1,11 @@
 package main
 
 import (
+	i "authenticating-route-service/internal"
+	d "authenticating-route-service/pkg/debugprint"
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,13 +17,11 @@ import (
 )
 
 const (
-	DEFAULT_PORT              = 8080
-	CF_FORWARDED_URL_HEADER   = "X-Cf-Forwarded-Url"
-	CF_PROXY_SIGNATURE_HEADER = "X-Cf-Proxy-Signature"
-	CF_PROXY_METADATA_HEADER  = "X-CF-Proxy-Metadata"
+	defaultPort            = 8080
+	cfForwardedURLHeader   = "X-Cf-Forwarded-Url"
+	cfProxySignatureHeader = "X-Cf-Proxy-Signature"
+	cfProxyMetadataHeader  = "X-CF-Proxy-Metadata"
 )
-
-var DebugOut io.Writer = ioutil.Discard
 
 func main() {
 	var (
@@ -32,7 +31,7 @@ func main() {
 
 	port, _ = strconv.ParseInt(os.Getenv("PORT"), 10, 16)
 	if port == 0 {
-		port = DEFAULT_PORT
+		port = defaultPort
 	}
 
 	ssv := os.Getenv("SKIP_SSL_VALIDATION")
@@ -44,17 +43,18 @@ func main() {
 
 	log.SetOutput(os.Stdout)
 
-	roundTripper := NewLoggingRoundTripper(skipSslValidation)
+	roundTripper := NewAuthRoundTripper(skipSslValidation)
 	proxy := NewProxy(roundTripper, skipSslValidation)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), proxy))
 }
 
+// NewProxy sets up a http Handler using the custom AuthRoundTripper
 func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler {
 	reverseProxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			forwardedURL := req.Header.Get(CF_FORWARDED_URL_HEADER)
-			debug("NewProxy:1: %s\n", forwardedURL)
+			forwardedURL := req.Header.Get(cfForwardedURLHeader)
+			d.Debugfln("NewProxy:1: %s", forwardedURL)
 
 			var body []byte
 			var err error
@@ -80,70 +80,72 @@ func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler 
 	return reverseProxy
 }
 
-type LoggingRoundTripper struct {
+// AuthRoundTripper object, exported for use in tests
+type AuthRoundTripper struct {
 	transport http.RoundTripper
 }
 
-func NewLoggingRoundTripper(skipSslValidation bool) *LoggingRoundTripper {
+// NewAuthRoundTripper returns an AuthRoundTripper
+func NewAuthRoundTripper(skipSslValidation bool) *AuthRoundTripper {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipSslValidation},
 	}
-	return &LoggingRoundTripper{
+	return &AuthRoundTripper{
 		transport: tr,
 	}
 }
 
-func (lrt *LoggingRoundTripper) RoundTrip(request *http.Request) (response *http.Response, err error) {
-
+// RoundTrip returns a response and error from a request
+func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Response, err error) {
 	path := request.URL.EscapedPath()
 
-	debug("RoundTrip:1: %s\n", request.URL)
+	d.Debugfln("RoundTrip:1: path: %s", path)
 
 	if strings.HasPrefix(path, "/auth") {
 
-		debug("RoundTrip:2: Auth request to: %s\n", request.URL.String())
+		d.Debugfln("RoundTrip:2: Auth request.")
 
-		response, err = AuthRequestDecision(request)
+		response, err = i.AuthRequestDecision(request)
 		if err != nil {
-			response = HTTPErrorResponse(err)
+			response = i.HTTPErrorResponse(err)
 		}
 
 	} else {
 
-		if CheckCookie(request) {
+		if i.CheckCookie(request) {
 
-			debug("RoundTrip:2: Forwarding to: %s", request.URL.String())
+			d.Debugfln("RoundTrip:2: Forwarding to: %s", request.URL.String())
 
 			response, err = lrt.transport.RoundTrip(request)
 			if err != nil {
-				response = HTTPErrorResponse(err)
+				response = i.HTTPErrorResponse(err)
 			}
 
 			body, err := ioutil.ReadAll(response.Body)
 			if err != nil {
-				response = HTTPErrorResponse(err)
+				response = i.HTTPErrorResponse(err)
 			} else {
 				response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
 
 		} else {
 
-			debug("RoundTrip:2: Redirecting to login page")
-			response = EmptyHTTPResponse(request)
-			RedirectResponse(response, http.StatusSeeOther, "/auth/login")
+			d.Debugfln("RoundTrip:2: Redirecting to login page")
+			response = i.EmptyHTTPResponse(request)
+			i.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 		}
 	}
 
-	sigHeader := request.Header.Get(CF_PROXY_SIGNATURE_HEADER)
-	metaHeader := request.Header.Get(CF_PROXY_METADATA_HEADER)
+	sigHeader := request.Header.Get(cfProxySignatureHeader)
+	metaHeader := request.Header.Get(cfProxyMetadataHeader)
 
-	response.Header.Add(CF_PROXY_SIGNATURE_HEADER, sigHeader)
-	response.Header.Add(CF_PROXY_METADATA_HEADER, metaHeader)
+	response.Header.Add(cfProxySignatureHeader, sigHeader)
+	response.Header.Add(cfProxyMetadataHeader, metaHeader)
 
-	AddSecurityHeaders(response)
+	i.AddSecurityHeaders(response)
 
-	debug("RoundTrip:3: Responding...")
+	d.Debugfln("RoundTrip:3: Responding...")
 
 	return response, nil
 }
