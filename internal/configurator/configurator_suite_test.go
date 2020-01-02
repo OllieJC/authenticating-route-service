@@ -1,4 +1,4 @@
-package debugprint_test
+package configurator_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -9,5 +9,5 @@ import (
 
 func TestDebugprint(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Debugprint Suite")
+	RunSpecs(t, "Configurator Suite")
 }
