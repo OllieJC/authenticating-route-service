@@ -1,0 +1,24 @@
+domains:
+  - example.com:
+    auth_pages_title: ""
+    skip_ssl_validation: false
+    google_email_domains:
+      - email.example.com:
+        google_oauth_client_id: "abc"
+        google_oauth_client_secret: "123"
+      - second.example.com:
+        google_oauth_client_id: "def"
+        google_oauth_client_secret: "456"
+    debug: false
+    session_cookie_name: "_sessionABC123"
+    session_server_token: "abc123"
+    security_headers:
+      x-xss-protection: ""
+      x-content-type-options: ""
+      x-frame-options: "ALLOW"
+      content-security-policy: ""
+      referrer-policy: "NO-SET"
+      feature-policy: ""
+  - testing.uk:
+    skip_ssl_validation: true
+    debug: true
