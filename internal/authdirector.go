@@ -118,6 +118,7 @@ func returnAsset(request *http.Request) (*http.Response, error) {
 				}
 				res.Header = http.Header{}
 				res.Header.Add("Content-Type", contentType)
+				res.Header.Add("Cache-Control", "max-age=86400, public")
 				return res, nil
 			}
 		}

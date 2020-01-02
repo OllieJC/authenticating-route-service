@@ -131,6 +131,10 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 			i.AddCookie(request, response, "", "")
 
+			if response.Header.Get("Cache-Control") == "" {
+				response.Header.Add("Cache-Control", "max-age=1, private")
+			}
+
 		} else {
 
 			d.Debugfln("RoundTrip:2: Redirecting to login page")
