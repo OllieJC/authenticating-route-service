@@ -112,7 +112,8 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 	} else {
 
-		if i.CheckCookie(request) {
+		ok, _ := i.CheckCookie(request)
+		if ok {
 
 			d.Debugfln("RoundTrip:2: Forwarding to: %s", request.URL.String())
 
@@ -126,6 +127,12 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 				response = i.HTTPErrorResponse(err)
 			} else {
 				response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+			}
+
+			i.AddCookie(request, response, "", "")
+
+			if response.Header.Get("Cache-Control") == "" {
+				response.Header.Add("Cache-Control", "max-age=1, private")
 			}
 
 		} else {

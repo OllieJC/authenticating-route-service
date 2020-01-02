@@ -118,6 +118,7 @@ func returnAsset(request *http.Request) (*http.Response, error) {
 				}
 				res.Header = http.Header{}
 				res.Header.Add("Content-Type", contentType)
+				res.Header.Add("Cache-Control", "max-age=86400, public")
 				return res, nil
 			}
 		}
@@ -137,7 +138,7 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 	if strings.HasPrefix(request.URL.Path, "/auth/status") {
 
 		body := []byte("false")
-		if CheckCookie(request) {
+		if ok, _ := CheckCookie(request); ok {
 			body = []byte("true")
 		}
 		response.StatusCode = http.StatusOK
@@ -164,8 +165,8 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 		Debugfln("AuthRequestDecision:3: GET /auth/logout")
 
-		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 		RemoveCookie(response)
+		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 	} else if request.URL.Path == "/auth/login" && request.Method == "POST" {
 

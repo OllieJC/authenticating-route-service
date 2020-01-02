@@ -91,6 +91,7 @@ func TemplateResponse(templateFileName string, responseCode int, tpd templatePag
 
 	response.StatusCode = responseCode
 	response.Body = ioutil.NopCloser(bytes.NewReader(tpl.Bytes()))
+	response.Header.Add("Cache-Control", "max-age=60, public")
 
 	return response, nil
 }
