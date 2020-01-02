@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
 
 	//"github.com/jarcoal/httpmock"
 
@@ -191,6 +193,29 @@ var _ = Describe("AuthDirector", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
+		})
+
+		It("should set-cookie to a deleted cookie with /auth/logout", func() {
+			const (
+				path               = "/auth/logout"
+				expectedStatusCode = http.StatusSeeOther
+			)
+
+			var err error
+
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080%s", path), nil)
+
+			resp, err := s.AuthRequestDecision(req)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.StatusCode).Should(Equal(expectedStatusCode))
+
+			cookieRaw := resp.Header.Get("Set-Cookie")
+			Expect(cookieRaw).Should(ContainSubstring("_session"))
+			Expect(cookieRaw).Should(ContainSubstring("Max-Age=0"))
+
+			expectedYear := strconv.Itoa(time.Now().AddDate(-1, -1, -1).Year())
+			Expect(cookieRaw).Should(ContainSubstring(expectedYear))
 		})
 	})
 })

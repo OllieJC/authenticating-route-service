@@ -164,8 +164,8 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 		Debugfln("AuthRequestDecision:3: GET /auth/logout")
 
-		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 		RemoveCookie(response)
+		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 	} else if request.URL.Path == "/auth/login" && request.Method == "POST" {
 

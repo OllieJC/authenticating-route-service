@@ -106,4 +106,29 @@ var _ = Describe("Sessions", func() {
 		Expect(bTest).To(BeTrue())
 		Expect(retSess).Should(Equal(sess))
 	})
+
+	It("should renew cookie if set already in a request", func() {
+		const (
+			testString = "Testing123."
+		)
+
+		sess := s.NewCustomSession()
+		sess.Provider = "Test"
+		sess.UserData = testString
+		b, err := json.Marshal(sess)
+		Expect(err).NotTo(HaveOccurred())
+
+		encString, err := s.Encrypt(string(b), "")
+		Expect(err).NotTo(HaveOccurred())
+
+		cookie := http.Cookie{Name: "_session", Value: encString}
+		request := &http.Request{Header: http.Header{"Cookie": []string{cookie.String()}}}
+
+		response := s.EmptyHTTPResponse(nil)
+		s.AddCookie(request, response, "", "")
+
+		cookieInResponse := response.Header.Get("Set-Cookie")
+		Expect(cookieInResponse).ShouldNot(Equal(""))
+		Expect(cookieInResponse).ShouldNot(Equal(cookie.String()))
+	})
 })

@@ -112,7 +112,8 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 	} else {
 
-		if ok, _ := i.CheckCookie(request); ok {
+		ok, _ := i.CheckCookie(request)
+		if ok {
 
 			d.Debugfln("RoundTrip:2: Forwarding to: %s", request.URL.String())
 
@@ -127,6 +128,8 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 			} else {
 				response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
+
+			i.AddCookie(request, response, "", "")
 
 		} else {
 
