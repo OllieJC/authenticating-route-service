@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -94,12 +93,12 @@ func GenerateStateOauthCookie(resp *http.Response) string {
 
 	Debugfln("GenerateStateOauthCookie:1: Adding cookie with time until: %s", expiration.String())
 
-	b, err := generateRandomBytes(16)
+	b, err := generateRandomBytes(16, true)
 	if err != nil {
 		panic(fmt.Sprintf("generateRandomBytes is unavailable: failed with %#v", err))
 	}
 
-	state := base64.StdEncoding.EncodeToString(b)
+	state := string(b)
 	cookie := http.Cookie{Name: "oauthstate", Value: state, Expires: expiration}
 
 	resp.Header.Add("Set-Cookie", cookie.String())

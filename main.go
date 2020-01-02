@@ -112,7 +112,7 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 	} else {
 
-		if i.CheckCookie(request) {
+		if ok, _ := i.CheckCookie(request); ok {
 
 			d.Debugfln("RoundTrip:2: Forwarding to: %s", request.URL.String())
 

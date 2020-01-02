@@ -102,7 +102,8 @@ var _ = Describe("Sessions", func() {
 		cookie := http.Cookie{Name: "_session", Value: encString}
 		request := &http.Request{Header: http.Header{"Cookie": []string{cookie.String()}}}
 
-		bTest := s.CheckCookie(request)
+		bTest, retSess := s.CheckCookie(request)
 		Expect(bTest).To(BeTrue())
+		Expect(retSess).Should(Equal(sess))
 	})
 })

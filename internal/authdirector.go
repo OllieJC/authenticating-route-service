@@ -137,7 +137,7 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 	if strings.HasPrefix(request.URL.Path, "/auth/status") {
 
 		body := []byte("false")
-		if CheckCookie(request) {
+		if ok, _ := CheckCookie(request); ok {
 			body = []byte("true")
 		}
 		response.StatusCode = http.StatusOK

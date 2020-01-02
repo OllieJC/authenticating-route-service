@@ -24,9 +24,9 @@ type CustomSession struct {
 
 func NewCustomSession() CustomSession {
 	res := CustomSession{}
-	rb, _ := generateRandomBytes(32)
+	rb, _ := generateRandomBytes(32, true)
 	res.ID = string(rb)
-	res.ExpiryTime = time.Now().Add(6 * time.Hour).Unix()
+	res.ExpiryTime = expiryTime().Unix()
 	res.Provider = ""
 	res.UserData = ""
 	return res
@@ -102,27 +102,30 @@ func Decrypt(data string, passphrase string) ([]byte, error) {
 	return plaintext, nil
 }
 
-func CheckCookie(request *http.Request) bool {
-	bRes := false
+func CheckCookie(request *http.Request) (bool, CustomSession) {
+
+	var (
+		bRes = false
+		sess CustomSession
+	)
 
 	Debugfln("CheckCookie: Starting...")
 
 	cookie, err := request.Cookie(GetSessionCookieName())
 	if err != nil {
 		Debugfln("CheckCookie: %#v", err)
-		return false
+		return false, sess
 	}
 
 	if len(cookie.Value) > 0 {
 		decString, err := Decrypt(cookie.Value, GetSessionSvrToken())
 		if err != nil {
-			return false
+			return false, sess
 		}
 
-		var sess CustomSession
 		err = json.Unmarshal(decString, &sess)
 		if err != nil {
-			return false
+			return false, sess
 		}
 
 		if sess.ExpiryTime > time.Now().Unix() {
@@ -130,32 +133,42 @@ func CheckCookie(request *http.Request) bool {
 		}
 	}
 
-	return bRes
+	return bRes, sess
 }
 
 func AddCookie(request *http.Request, response *http.Response, provider string, userdata string) {
 	Debugfln("AddCookie: Starting...")
 
-	if CheckCookie(request) == false {
+	ok, sess := CheckCookie(request)
+
+	if ok {
+		sess.ExpiryTime = expiryTime().Unix()
+	} else {
 		sess := NewCustomSession()
 		sess.Provider = provider
 		sess.UserData = userdata
-		b, err := json.Marshal(sess)
-		if err != nil {
-			return
-		}
-
-		encString, err := Encrypt(string(b), GetSessionSvrToken())
-		if err != nil {
-			return
-		}
-
-		expiryTime := time.Now().Add(6 * time.Hour)
-		cookie := &http.Cookie{Name: GetSessionCookieName(), Value: encString, Expires: expiryTime, Path: "/"}
-		response.Header.Add("Set-Cookie", cookie.String())
-
-		Debugfln("AddCookie: Setting '%s'", GetSessionCookieName())
 	}
+
+	b, err := json.Marshal(sess)
+	if err != nil {
+		return
+	}
+
+	encString, err := Encrypt(string(b), GetSessionSvrToken())
+	if err != nil {
+		return
+	}
+
+	expiryTime := expiryTime()
+	cookie := &http.Cookie{Name: GetSessionCookieName(), Value: encString, Expires: expiryTime, Path: "/"}
+	response.Header.Add("Set-Cookie", cookie.String())
+
+	Debugfln("AddCookie: Setting '%s'", GetSessionCookieName())
+	//}
+}
+
+func expiryTime() time.Time {
+	return time.Now().Add(6 * time.Hour)
 }
 
 func RemoveCookie(response *http.Response) {
