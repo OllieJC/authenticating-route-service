@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
+	c "authenticating-route-service/internal/configurator"
 	. "authenticating-route-service/pkg/debugprint"
 
 	"golang.org/x/oauth2"
@@ -18,26 +18,24 @@ const redirectFormatString = "%s://%s/auth/google/callback"
 
 // Scopes: OAuth 2.0 scopes provide a way to limit the amount of access that is granted to an access token.
 var googleOauthConfig = &oauth2.Config{
-	ClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
-	ClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
-	Scopes:       []string{"profile", "email", "https://www.googleapis.com/auth/userinfo.email"},
-	Endpoint:     google.Endpoint,
+	Scopes:   []string{"profile", "email", "https://www.googleapis.com/auth/userinfo.email"},
+	Endpoint: google.Endpoint,
 }
 
-func setRedirectURL() {
-	redirectDomain := os.Getenv("GOOGLE_REDIRECT_DOMAIN")
-
+func setOauthConfig(dc c.DomainConfig) {
 	setVal := ""
-	if redirectDomain != "" {
-		setVal = fmt.Sprintf(redirectFormatString, "https", redirectDomain)
+	if dc.Domain != "" {
+		setVal = fmt.Sprintf(redirectFormatString, "https", dc.Domain)
 		googleOauthConfig.RedirectURL = setVal
+		Debugfln("setOauthConfig: Setting RedirectURL to: %s", setVal)
 	}
-	Debugfln("setRedirectURL:1: Setting to: %s", setVal)
+	googleOauthConfig.ClientID = dc.GoogleOAuthClientID
+	googleOauthConfig.ClientSecret = dc.GoogleOAuthClientSecret
 }
 
 const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
-func OAuthGoogleLogin(response *http.Response) {
+func OAuthGoogleLogin(response *http.Response, dc c.DomainConfig) {
 	Debugfln("OAuthGoogleLogin:1: Start...")
 
 	// Create oauthState cookie
@@ -47,13 +45,13 @@ func OAuthGoogleLogin(response *http.Response) {
 	   AuthCodeURL receive state that is a token to protect the user from CSRF attacks. You must always provide a non-empty string and
 	   validate that it matches the the state query parameter on your redirect callback.
 	*/
-	setRedirectURL()
+	setOauthConfig(dc)
 	oAuthUrl := googleOauthConfig.AuthCodeURL(oauthState)
 
 	RedirectResponse(response, http.StatusSeeOther, oAuthUrl)
 }
 
-func OauthGoogleCallback(request *http.Request, response *http.Response) (string, error) {
+func OauthGoogleCallback(request *http.Request, response *http.Response, dc c.DomainConfig) (string, error) {
 	Debugfln("OauthGoogleCallback:1: Start...")
 
 	oauthState, err := request.Cookie("oauthstate")
@@ -66,7 +64,7 @@ func OauthGoogleCallback(request *http.Request, response *http.Response) (string
 		return "", fmt.Errorf("ERROR: OauthGoogleCallback: state bad")
 	}
 
-	data, err := getUserDataFromGoogle(request.FormValue("code"))
+	data, err := getUserDataFromGoogle(request.FormValue("code"), dc)
 	if err != nil {
 		Debugfln("OauthGoogleCallback:err: %#v", err)
 
@@ -106,11 +104,11 @@ func GenerateStateOauthCookie(resp *http.Response) string {
 	return state
 }
 
-func getUserDataFromGoogle(code string) ([]byte, error) {
+func getUserDataFromGoogle(code string, dc c.DomainConfig) ([]byte, error) {
 	// Use code to get token and get user info from Google.
 	Debugfln("getUserDataFromGoogle:1: Starting...")
 
-	setRedirectURL()
+	setOauthConfig(dc)
 
 	token, err := googleOauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {

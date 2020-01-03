@@ -1,6 +1,7 @@
 package internal
 
 import (
+	c "authenticating-route-service/internal/configurator"
 	. "authenticating-route-service/pkg/debugprint"
 	"crypto/aes"
 	"crypto/cipher"
@@ -11,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -34,18 +34,24 @@ func NewCustomSession() CustomSession {
 
 var _sessionSvrToken = ""
 
-func GetSessionSvrToken() string {
+func GetSessionSvrToken(request *http.Request) string {
 	if _sessionSvrToken == "" {
-		_sessionSvrToken = os.Getenv("SESSION_SERVER_TOKEN")
+		dc, err := c.GetDomainConfigFromRequest(request)
+		if err == nil && dc.Domain != "" {
+			_sessionSvrToken = dc.SessionServerToken
+		}
 	}
 	return _sessionSvrToken
 }
 
 var _sessionCookieName = ""
 
-func GetSessionCookieName() string {
+func GetSessionCookieName(request *http.Request) string {
 	if _sessionCookieName == "" {
-		_sessionCookieName = fmt.Sprintf("_session%s", os.Getenv("SESSION_COOKIE_NAME"))
+		dc, err := c.GetDomainConfigFromRequest(request)
+		if err == nil && dc.Domain != "" {
+			_sessionCookieName = fmt.Sprintf("_session%s", dc.SessionCookieName)
+		}
 	}
 	return _sessionCookieName
 }
@@ -110,14 +116,14 @@ func CheckCookie(request *http.Request) (bool, CustomSession) {
 
 	Debugfln("CheckCookie: Starting...")
 
-	cookie, err := request.Cookie(GetSessionCookieName())
+	cookie, err := request.Cookie(GetSessionCookieName(request))
 	if err != nil {
 		Debugfln("CheckCookie: %#v", err)
 		return false, blank_sess
 	}
 
 	if len(cookie.Value) > 0 {
-		decString, err := Decrypt(cookie.Value, GetSessionSvrToken())
+		decString, err := Decrypt(cookie.Value, GetSessionSvrToken(request))
 		if err != nil {
 			Debugfln("CheckCookie: %#v", err)
 			return false, blank_sess
@@ -165,17 +171,17 @@ func AddCookie(request *http.Request, response *http.Response, provider string, 
 		return
 	}
 
-	encString, err := Encrypt(string(b), GetSessionSvrToken())
+	encString, err := Encrypt(string(b), GetSessionSvrToken(request))
 	if err != nil {
 		Debugfln("AddCookie: err: %#v", err)
 		return
 	}
 
 	expiryTime := expiryTime()
-	cookie := &http.Cookie{Name: GetSessionCookieName(), Value: encString, Expires: expiryTime, Path: "/"}
+	cookie := &http.Cookie{Name: GetSessionCookieName(request), Value: encString, Expires: expiryTime, Path: "/"}
 	response.Header.Add("Set-Cookie", cookie.String())
 
-	Debugfln("AddCookie: Setting '%s'", GetSessionCookieName())
+	Debugfln("AddCookie: Setting '%s'", GetSessionCookieName(request))
 
 }
 
@@ -183,10 +189,10 @@ func expiryTime() time.Time {
 	return time.Now().Add(6 * time.Hour)
 }
 
-func RemoveCookie(response *http.Response) {
+func RemoveCookie(request *http.Request, response *http.Response) {
 	Debugfln("RemoveCookie: Starting...")
 
 	expiryTime := time.Now().AddDate(-1, -1, -1)
-	cookie := &http.Cookie{Name: GetSessionCookieName(), Value: "", Expires: expiryTime, Path: "/", MaxAge: -1}
+	cookie := &http.Cookie{Name: GetSessionCookieName(request), Value: "", Expires: expiryTime, Path: "/", MaxAge: -1}
 	response.Header.Add("Set-Cookie", cookie.String())
 }

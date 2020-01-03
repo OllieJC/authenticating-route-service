@@ -44,13 +44,13 @@ func main() {
 	log.SetOutput(os.Stdout)
 
 	roundTripper := NewAuthRoundTripper(skipSslValidation)
-	proxy := NewProxy(roundTripper, skipSslValidation)
+	proxy := NewProxy(roundTripper)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), proxy))
 }
 
 // NewProxy sets up a http Handler using the custom AuthRoundTripper
-func NewProxy(transport http.RoundTripper, skipSslValidation bool) http.Handler {
+func NewProxy(transport http.RoundTripper) http.Handler {
 	reverseProxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			forwardedURL := req.Header.Get(cfForwardedURLHeader)
@@ -150,7 +150,7 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 	response.Header.Add(cfProxySignatureHeader, sigHeader)
 	response.Header.Add(cfProxyMetadataHeader, metaHeader)
 
-	i.AddSecurityHeaders(response)
+	i.AddSecurityHeaders(request, response)
 
 	d.Debugfln("RoundTrip:3: Responding...")
 

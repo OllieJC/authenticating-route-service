@@ -5,15 +5,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	s "authenticating-route-service/internal"
+	c "authenticating-route-service/internal/configurator"
 )
 
 var _ = Describe("Google", func() {
 	It("should return a string and cookie with GenerateStateOauthCookie", func() {
+		os.Setenv("DOMAIN_CONFIG_FILEPATH", "../test/data/example.yml")
+
 		r := &http.Response{}
 		r.Header = http.Header{}
 		cookieStr := s.GenerateStateOauthCookie(r)
@@ -25,6 +29,8 @@ var _ = Describe("Google", func() {
 	})
 
 	It("should attempt to query Google", func() {
+		os.Setenv("DOMAIN_CONFIG_FILEPATH", "../test/data/example.yml")
+
 		response := &http.Response{}
 		response.Header = http.Header{}
 
@@ -37,20 +43,25 @@ var _ = Describe("Google", func() {
 		request.Form.Add("state", cookieStr)
 		request.Form.Add("code", "xxx")
 
-		cbResp, err := s.OauthGoogleCallback(request, response)
+		dc := c.DomainConfig{Domain: "example.com"}
+		cbResp, err := s.OauthGoogleCallback(request, response, dc)
 
 		Expect(err).To(HaveOccurred())
 		Expect(cbResp).To(Equal(""))
 	})
 
 	It("should set an oauthstate cookie, location header and redirect with OAuthGoogleLogin", func() {
+		os.Setenv("DOMAIN_CONFIG_FILEPATH", "../test/data/example.yml")
+
 		const (
 			expectedHostnameInRedirect = "accounts.google.com"
 		)
 
+		dc := c.DomainConfig{Domain: "example.com"}
+
 		r := &http.Response{}
 		r.Header = http.Header{}
-		s.OAuthGoogleLogin(r)
+		s.OAuthGoogleLogin(r, dc)
 
 		Expect(r.StatusCode).To(Equal(http.StatusSeeOther))
 

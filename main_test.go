@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"time"
 
 	//"github.com/jarcoal/httpmock"
@@ -19,6 +20,8 @@ import (
 )
 
 var _ = Describe("Main", func() {
+	os.Setenv("DOMAIN_CONFIG_FILEPATH", "test/data/example.yml")
+
 	It("should respond to a backing service with the 'X-Cf-Forwarded-Url' set and a cookie", func() {
 		const (
 			expected          = "hi"
@@ -38,7 +41,7 @@ var _ = Describe("Main", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
-		proxyHandler := s.NewProxy(roundTripper, skipSslValidation)
+		proxyHandler := s.NewProxy(roundTripper)
 
 		frontend := httptest.NewServer(proxyHandler)
 		defer frontend.Close()
@@ -90,19 +93,23 @@ var _ = Describe("Main", func() {
 		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(notExpectedBody))
 		}))
+		backend.URL = "http://example.com"
 		defer backend.Close()
 
 		_, err := url.Parse(backend.URL)
 		Expect(err).NotTo(HaveOccurred())
 
 		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
-		proxyHandler := s.NewProxy(roundTripper, skipSslValidation)
+		proxyHandler := s.NewProxy(roundTripper)
 
 		frontend := httptest.NewServer(proxyHandler)
 		defer frontend.Close()
 
 		reqFeUrl := fmt.Sprintf("%s/auth/login", frontend.URL)
 		reqBeUrl := fmt.Sprintf("%s/auth/login", backend.URL)
+
+		fmt.Println("reqFeUrl:", reqFeUrl)
+		fmt.Println("reqBeUrl:", reqBeUrl)
 
 		req, _ := http.NewRequest("POST", reqFeUrl, nil)
 		req.Header.Add("X-Cf-Forwarded-Url", reqBeUrl)
@@ -139,13 +146,14 @@ var _ = Describe("Main", func() {
 		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(notExpectedBody))
 		}))
+		backend.URL = "http://example.com"
 		defer backend.Close()
 
 		_, err := url.Parse(backend.URL)
 		Expect(err).NotTo(HaveOccurred())
 
 		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
-		proxyHandler := s.NewProxy(roundTripper, skipSslValidation)
+		proxyHandler := s.NewProxy(roundTripper)
 
 		frontend := httptest.NewServer(proxyHandler)
 		defer frontend.Close()

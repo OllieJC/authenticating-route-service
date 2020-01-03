@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"time"
 
@@ -46,7 +47,7 @@ var _ = Describe("Sessions", func() {
 
 	It("should add a cookie with AddCookie", func() {
 
-		request := &http.Request{Header: http.Header{}}
+		request := httptest.NewRequest("GET", "http://example.com/auth/google/callback", nil)
 		response := s.EmptyHTTPResponse(request)
 
 		s.AddCookie(request, response, "Test", "abc123")
@@ -70,7 +71,9 @@ var _ = Describe("Sessions", func() {
 	It("should set expiry in past with RemoveCookie", func() {
 		response := s.EmptyHTTPResponse(nil)
 
-		s.RemoveCookie(response)
+		request, _ := http.NewRequest("GET", "http://example.com", nil)
+
+		s.RemoveCookie(request, response)
 
 		cookieRawVal := response.Header.Get("Set-Cookie")
 		Expect(cookieRawVal).ToNot(BeNil())
@@ -96,11 +99,13 @@ var _ = Describe("Sessions", func() {
 		b, err := json.Marshal(sess)
 		Expect(err).NotTo(HaveOccurred())
 
-		encString, err := s.Encrypt(string(b), "")
+		request := httptest.NewRequest("GET", "http://example.com/auth/google/callback", nil)
+
+		encString, err := s.Encrypt(string(b), s.GetSessionSvrToken(request))
 		Expect(err).NotTo(HaveOccurred())
 
-		cookie := http.Cookie{Name: "_session", Value: encString}
-		request := &http.Request{Header: http.Header{"Cookie": []string{cookie.String()}}}
+		cookie := &http.Cookie{Name: s.GetSessionCookieName(request), Value: encString}
+		request.AddCookie(cookie)
 
 		bTest, retSess := s.CheckCookie(request)
 		Expect(bTest).To(BeTrue())

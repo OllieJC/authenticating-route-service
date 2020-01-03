@@ -2,13 +2,13 @@ domains:
   - domain: example.com
     auth_pages_title: ""
     enabled: true
-    google_email_domains:
+    google_oauth_client_id: "abc"
+    google_oauth_client_secret: "123"
+    login_email_domains:
       - domain: email.example.com
-        google_oauth_client_id: "abc"
-        google_oauth_client_secret: "123"
+        provider: Google
       - domain: second.example.com
-        google_oauth_client_id: "def"
-        google_oauth_client_secret: "456"
+        provider: None
     session_cookie_name: "ABC567"
     session_server_token: "DEF890"
     security_headers:
@@ -18,7 +18,5 @@ domains:
       content-security-policy: ""
       referrer-policy: "NO-SET"
       feature-policy: ""
-    skip_tls_validation: false
   - domain: testing.uk
-    skip_tls_validation: true
     auth_pages_title: Testing123"

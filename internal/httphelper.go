@@ -1,51 +1,16 @@
 package internal
 
 import (
+	c "authenticating-route-service/internal/configurator"
 	"bytes"
 	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 )
-
-var (
-	_securityOption map[string]string
-)
-
-const noSetSecOpt = "NO-SET"
-
-func securityOption(option string) (string, string) {
-	var val string
-
-	if option == "" {
-		return option, val
-	}
-
-	optEnvVar := strings.Replace(strings.ToUpper(option), "-", "_", -1)
-	eso := fmt.Sprintf("ENV_SEC_OPT_%s", optEnvVar)
-
-	if InternalTest {
-		val = os.Getenv(eso)
-	} else {
-		if _securityOption == nil {
-			_securityOption = make(map[string]string)
-		}
-
-		var ok bool
-		val, ok = _securityOption[optEnvVar]
-
-		if ok == false {
-			val = os.Getenv(eso)
-			_securityOption[optEnvVar] = val
-		}
-	}
-
-	return option, val
-}
 
 type templatePageData struct {
 	Title      string
@@ -123,17 +88,31 @@ func HTTPNotFoundResponse(err error) *http.Response {
 	return t
 }
 
-func AddSecurityHeaders(response *http.Response) {
-	addSecurityHeader(response, "X-Xss-Protection", "1; mode=block")
-	addSecurityHeader(response, "X-Content-Type-Options", "nosniff")
-	addSecurityHeader(response, "X-Frame-Options", "DENY")
-	addSecurityHeader(response, "Content-Security-Policy", "default-src 'self'")
-	addSecurityHeader(response, "Referrer-Policy", "strict-origin-when-cross-origin")
-	addSecurityHeader(response, "Feature-Policy", "vibrate 'none'; geolocation 'none'; microphone 'none'; camera 'none'; payment 'none'; notifications 'none';")
+func AddSecurityHeaders(request *http.Request, response *http.Response) {
+	var sh map[string]string
+	dc, err := c.GetDomainConfigFromRequest(request)
+	if err == nil {
+		sh = dc.SecurityHeaders
+	}
+
+	addSecurityHeader(response, "X-Xss-Protection", "1; mode=block", sh)
+	addSecurityHeader(response, "X-Content-Type-Options", "nosniff", sh)
+	addSecurityHeader(response, "X-Frame-Options", "DENY", sh)
+	addSecurityHeader(response, "Content-Security-Policy", "default-src 'self'", sh)
+	addSecurityHeader(response, "Referrer-Policy", "strict-origin-when-cross-origin", sh)
+	addSecurityHeader(response, "Feature-Policy", "vibrate 'none'; geolocation 'none'; microphone 'none'; camera 'none'; payment 'none'; notifications 'none';", sh)
 }
 
-func addSecurityHeader(response *http.Response, header string, defaultStr string) {
-	_, val := securityOption(header)
+func addSecurityHeader(response *http.Response, header string, defaultStr string, siteSecurityHeaders map[string]string) {
+	var val string
+	const noSetSecOpt = "NO-SET"
+
+	for k, v := range siteSecurityHeaders {
+		if strings.ToLower(k) == strings.ToLower(header) {
+			val = v
+		}
+	}
+
 	if val == "" {
 		response.Header.Add(header, defaultStr)
 	} else if val != noSetSecOpt {

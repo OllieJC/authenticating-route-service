@@ -1,3 +1,5 @@
 authenticating-route-service
 .secret
 example-site/*
+config/*.yml
+config/*.yaml

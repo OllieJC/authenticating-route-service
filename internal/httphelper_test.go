@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"net/http/httptest"
 
 	//"github.com/jarcoal/httpmock"
 
@@ -44,9 +44,11 @@ var _ = Describe("HTTPHelper", func() {
 	})
 
 	It("should add sensible security header defaults with AddSecurityHeaders", func() {
+
+		request := httptest.NewRequest("GET", "http://testing.uk/", nil)
 		response := s.EmptyHTTPResponse(nil)
 
-		s.AddSecurityHeaders(response)
+		s.AddSecurityHeaders(request, response)
 
 		xxp := response.Header.Get("X-Xss-Protection")
 		Expect(xxp).To(Equal("1; mode=block"))
@@ -68,13 +70,12 @@ var _ = Describe("HTTPHelper", func() {
 	})
 
 	It("should allow headers to be overrode in AddSecurityHeaders", func() {
-		os.Setenv("ENV_SEC_OPT_X_XSS_PROTECTION", "NO-SET")
-		os.Setenv("ENV_SEC_OPT_X_FRAME_OPTIONS", "ALLOW")
 
+		request := httptest.NewRequest("GET", "http://example.com/", nil)
 		response := s.EmptyHTTPResponse(nil)
-		s.AddSecurityHeaders(response)
+		s.AddSecurityHeaders(request, response)
 
-		_, xxp := response.Header["X-Xss-Protection"]
+		_, xxp := response.Header["Referrer-Policy"]
 		Expect(xxp).To(Equal(false))
 
 		xcto := response.Header.Get("X-Content-Type-Options")

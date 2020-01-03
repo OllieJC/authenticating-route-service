@@ -1,6 +1,7 @@
 package internal
 
 import (
+	c "authenticating-route-service/internal/configurator"
 	. "authenticating-route-service/pkg/debugprint"
 	"bytes"
 	"errors"
@@ -31,12 +32,23 @@ func AuthIDPDirector(request *http.Request, response *http.Response) error {
 		return errBadEmail
 	}
 
-	if strings.HasSuffix(email, "@digital.cabinet-office.gov.uk") {
-		OAuthGoogleLogin(response)
+	if strings.Contains(email, "@") {
 
-		Debugfln("AuthIDPDirector:2: Returning good email.")
+		se := strings.Split(email, "@")
+		domain := se[len(se)-1]
+		dc, err := c.GetDomainConfigFromRequest(request)
+		if err != nil {
+			return errBadEmail
+		}
 
-		return nil
+		led := dc.GetLoginEmailDomain(domain)
+		if led.Provider == "Google" {
+			OAuthGoogleLogin(response, dc)
+
+			Debugfln("AuthIDPDirector:2: Returning good email.")
+
+			return nil
+		}
 	}
 
 	Debugfln("AuthIDPDirector:2: Returning bad email.")
@@ -165,7 +177,7 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 		Debugfln("AuthRequestDecision:3: GET /auth/logout")
 
-		RemoveCookie(response)
+		RemoveCookie(request, response)
 		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 	} else if request.URL.Path == "/auth/login" && request.Method == "POST" {
@@ -190,7 +202,11 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 		Debugfln("AuthRequestDecision:5: /auth/google/callback")
 
-		cbResp, err := OauthGoogleCallback(request, response)
+		dc, err := c.GetDomainConfigFromRequest(request)
+		if err != nil {
+			return HTTPErrorResponse(err), err
+		}
+		cbResp, err := OauthGoogleCallback(request, response, dc)
 
 		if err != nil {
 			Debugfln("AuthRequestDecision:5:err: %s", err.Error())
