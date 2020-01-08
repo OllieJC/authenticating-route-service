@@ -43,7 +43,7 @@ var _ = Describe("Google", func() {
 		request.Form.Add("state", cookieStr)
 		request.Form.Add("code", "xxx")
 
-		dc := c.DomainConfig{Domain: "example.com"}
+		dc := c.DomainConfig{Domain: "example.local"}
 		cbResp, err := s.OauthGoogleCallback(request, response, dc)
 
 		Expect(err).To(HaveOccurred())
@@ -57,7 +57,7 @@ var _ = Describe("Google", func() {
 			expectedHostnameInRedirect = "accounts.google.com"
 		)
 
-		dc := c.DomainConfig{Domain: "example.com"}
+		dc := c.DomainConfig{Domain: "example.local"}
 
 		r := &http.Response{}
 		r.Header = http.Header{}

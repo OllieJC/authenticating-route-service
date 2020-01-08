@@ -22,7 +22,7 @@ import (
 var _ = Describe("Main", func() {
 	os.Setenv("DOMAIN_CONFIG_FILEPATH", "test/data/example.yml")
 
-	It("should respond to a backing service with the 'X-Cf-Forwarded-Url' set and a cookie", func() {
+	It("should respond to a backing service with the 'X-Cf-Forwarded-Url' and session set", func() {
 		const (
 			expected          = "hi"
 			skipSslValidation = false
@@ -79,6 +79,54 @@ var _ = Describe("Main", func() {
 		Expect(res.Header.Get(metaHeader)).To(Equal(expectedMeta))
 	})
 
+	It("should respond to an unauth path with the 'X-Cf-Forwarded-Url' and no session set", func() {
+		const (
+			expected          = "no such host"
+			skipSslValidation = false
+			sigHeader         = "X-CF-Proxy-Signature"
+			metaHeader        = "X-CF-Proxy-Metadata"
+			expectedSig       = "aaaaa"
+			expectedMeta      = "bbbbb"
+		)
+
+		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(expected))
+		}))
+		backend.URL = "http://example.local"
+		defer backend.Close()
+
+		_, err := url.Parse(backend.URL)
+		Expect(err).NotTo(HaveOccurred())
+
+		roundTripper := s.NewAuthRoundTripper(skipSslValidation)
+		proxyHandler := s.NewProxy(roundTripper)
+
+		frontend := httptest.NewServer(proxyHandler)
+		defer frontend.Close()
+
+		reqFeUrl := fmt.Sprintf("%s/test/unauth", frontend.URL)
+		reqBeUrl := fmt.Sprintf("%s/test/unauth", backend.URL)
+
+		req, _ := http.NewRequest("GET", reqFeUrl, nil)
+		req.Header.Add("X-Cf-Forwarded-Url", reqBeUrl)
+		req.Header.Add(sigHeader, expectedSig)
+		req.Header.Add(metaHeader, expectedMeta)
+		req.Close = true
+		res, err := frontend.Client().Do(req)
+
+		Expect(err).NotTo(HaveOccurred())
+		defer res.Body.Close()
+
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(bodyBytes)).To(ContainSubstring(expected))
+
+		Expect(len(res.Header)).Should(BeNumerically(">", 0))
+
+		Expect(res.Header.Get(sigHeader)).To(Equal(expectedSig))
+		Expect(res.Header.Get(metaHeader)).To(Equal(expectedMeta))
+	})
+
 	It("should return bad email when post to /auth/login", func() {
 		const (
 			notExpectedBody   = "hello"
@@ -93,7 +141,7 @@ var _ = Describe("Main", func() {
 		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(notExpectedBody))
 		}))
-		backend.URL = "http://example.com"
+		backend.URL = "http://example.local"
 		defer backend.Close()
 
 		_, err := url.Parse(backend.URL)
@@ -107,9 +155,6 @@ var _ = Describe("Main", func() {
 
 		reqFeUrl := fmt.Sprintf("%s/auth/login", frontend.URL)
 		reqBeUrl := fmt.Sprintf("%s/auth/login", backend.URL)
-
-		fmt.Println("reqFeUrl:", reqFeUrl)
-		fmt.Println("reqBeUrl:", reqBeUrl)
 
 		req, _ := http.NewRequest("POST", reqFeUrl, nil)
 		req.Header.Add("X-Cf-Forwarded-Url", reqBeUrl)
@@ -146,7 +191,7 @@ var _ = Describe("Main", func() {
 		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(notExpectedBody))
 		}))
-		backend.URL = "http://example.com"
+		backend.URL = "http://example.local"
 		defer backend.Close()
 
 		_, err := url.Parse(backend.URL)

@@ -2,6 +2,7 @@ package main
 
 import (
 	i "authenticating-route-service/internal"
+	c "authenticating-route-service/internal/configurator"
 	d "authenticating-route-service/pkg/debugprint"
 	"bytes"
 	"crypto/tls"
@@ -110,10 +111,19 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 			response = i.HTTPErrorResponse(err)
 		}
 
+		// else if part of whitelist:
+		// e.g. /api/pages.json
+		// set in the config
+
 	} else {
 
-		ok, _ := i.CheckCookie(request)
-		if ok {
+		unauthPath := c.IsUnauthPath(request)
+		cookieValid := false
+		if unauthPath == false {
+			cookieValid, _ = i.CheckCookie(request)
+		}
+
+		if unauthPath || cookieValid {
 
 			d.Debugfln("RoundTrip:2: Forwarding to: %s", request.URL.String())
 

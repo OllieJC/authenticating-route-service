@@ -22,7 +22,7 @@ var _ = Describe("AuthDirector", func() {
 	Context("AuthIDPDirector", func() {
 		os.Setenv("DOMAIN_CONFIG_FILEPATH", "../test/data/example.yml")
 
-		req, _ := http.NewRequest("POST", "http://example.com/auth/non-exist", nil)
+		req, _ := http.NewRequest("POST", "http://example.local/auth/non-exist", nil)
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		resp := &http.Response{}
@@ -46,7 +46,7 @@ var _ = Describe("AuthDirector", func() {
 		It("should return an redirect with a valid email domain", func() {
 
 			req.PostForm = url.Values{
-				"email": {"test@email.example.com"},
+				"email": {"test@email.example.local"},
 			}
 			err := s.AuthIDPDirector(req, resp)
 
@@ -75,7 +75,7 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
 
 			resp, err := s.AuthRequestDecision(req)
 			Expect(err).NotTo(HaveOccurred())
@@ -97,10 +97,10 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("POST", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("POST", fmt.Sprintf("http://example.local%s", path), nil)
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 			req.PostForm = url.Values{
-				"email": {"test@email.example.com"},
+				"email": {"test@email.example.local"},
 			}
 
 			resp, err := s.AuthRequestDecision(req)
@@ -122,7 +122,7 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
 
 			resp, err := s.AuthRequestDecision(req)
 			Expect(err).NotTo(HaveOccurred())
@@ -147,7 +147,7 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
 
 			resp, err := s.AuthRequestDecision(req)
 			Expect(err).NotTo(HaveOccurred())
@@ -171,7 +171,7 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
 
 			resp, err := s.AuthRequestDecision(req)
 			Expect(err).NotTo(HaveOccurred())
@@ -193,7 +193,7 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
 
 			resp, err := s.AuthRequestDecision(req)
 
@@ -209,7 +209,7 @@ var _ = Describe("AuthDirector", func() {
 
 			var err error
 
-			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.com%s", path), nil)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
 
 			resp, err := s.AuthRequestDecision(req)
 

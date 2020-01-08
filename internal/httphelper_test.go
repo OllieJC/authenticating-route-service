@@ -71,7 +71,7 @@ var _ = Describe("HTTPHelper", func() {
 
 	It("should allow headers to be overrode in AddSecurityHeaders", func() {
 
-		request := httptest.NewRequest("GET", "http://example.com/", nil)
+		request := httptest.NewRequest("GET", "http://example.local/", nil)
 		response := s.EmptyHTTPResponse(nil)
 		s.AddSecurityHeaders(request, response)
 

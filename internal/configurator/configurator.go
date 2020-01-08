@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -26,6 +27,7 @@ type DomainConfig struct {
 	SessionCookieName       string             `yaml:"session_cookie_name"`
 	SessionServerToken      string             `yaml:"session_server_token"`
 	SecurityHeaders         map[string]string  `yaml:"security_headers"`
+	UnauthenticatedPaths    []string           `yaml:"unauthenticated_paths"`
 }
 
 // Config is the master configuration type, it has an array of DomainConfig objects
@@ -104,4 +106,23 @@ func GetDomainConfig(domain string, filename string) (DomainConfig, error) {
 	}
 
 	return dc, nil
+}
+
+// IsUnauthPath will return true if the request domain config matches and authenticated path
+func IsUnauthPath(request *http.Request) bool {
+	var res bool
+
+	dc, err := GetDomainConfigFromRequest(request)
+	if err != nil {
+		return res
+	}
+
+	for _, uap := range dc.UnauthenticatedPaths {
+		if strings.HasPrefix(request.URL.EscapedPath(), uap) {
+			res = true
+			break
+		}
+	}
+
+	return res
 }

@@ -1,13 +1,13 @@
 domains:
-  - domain: example.com
+  - domain: example.local
     auth_pages_title: ""
     enabled: true
     google_oauth_client_id: "abc"
     google_oauth_client_secret: "123"
     login_email_domains:
-      - domain: email.example.com
+      - domain: email.example.local
         provider: Google
-      - domain: second.example.com
+      - domain: second.example.local
         provider: None
     session_cookie_name: "ABC567"
     session_server_token: "DEF890"
@@ -18,5 +18,7 @@ domains:
       content-security-policy: ""
       referrer-policy: "NO-SET"
       feature-policy: ""
+    unauthenticated_paths:
+      - "/test/unauth"
   - domain: testing.uk
     auth_pages_title: Testing123"

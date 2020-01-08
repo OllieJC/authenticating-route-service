@@ -21,7 +21,7 @@ var _ = Describe("configurator", func() {
 		Expect(len(c.DomainConfigs)).To(BeEquivalentTo(2))
 
 		// first item domain
-		Expect(c.DomainConfigs[0].Domain).To(Equal("example.com"))
+		Expect(c.DomainConfigs[0].Domain).To(Equal("example.local"))
 
 		// if no value set, should default
 		Expect(c.DomainConfigs[1].Enabled).To(Equal(false))
@@ -43,8 +43,13 @@ var _ = Describe("configurator", func() {
 				fmt.Printf(d.GoogleOAuthClientSecret)
 				fmt.Println(d.SessionCookieName)
 				fmt.Println(d.SessionServerToken)
+
 				for k, s := range d.SecurityHeaders {
 					fmt.Printf("d: %s: %s\n", k, s)
+				}
+
+				for i, s := range d.UnauthenticatedPaths {
+					fmt.Printf("d: %d: %s\n", i, s)
 				}
 			}
 		}
@@ -60,13 +65,13 @@ var _ = Describe("configurator", func() {
 
 	It("should return an object from GetDomainConfigFromRequest", func() {
 		os.Setenv("DOMAIN_CONFIG_FILEPATH", "../../test/data/example.yml")
-		request, _ := http.NewRequest("GET", "http://example.com", nil)
+		request, _ := http.NewRequest("GET", "http://example.local", nil)
 
 		dc, err := s.GetDomainConfigFromRequest(request)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(dc).Should(BeAssignableToTypeOf(s.DomainConfig{}))
-		Expect(dc.Domain).Should(Equal("example.com"))
+		Expect(dc.Domain).Should(Equal("example.local"))
 	})
 
 	It("should not return an object from GetDomainConfig if enabled is not set", func() {
@@ -79,22 +84,46 @@ var _ = Describe("configurator", func() {
 	})
 
 	It("should not return an object from GetDomainConfig if filename is empty", func() {
-		_, err := s.GetDomainConfig("example.com", "")
+		_, err := s.GetDomainConfig("example.local", "")
 
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should not return an object from GetDomainConfig if file bad", func() {
-		_, err := s.GetDomainConfig("example.com", "../../test/data/bad.yml")
+		_, err := s.GetDomainConfig("example.local", "../../test/data/bad.yml")
 
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should return GoogleEmailDomain from DomainConfig", func() {
-		dc, err := s.GetDomainConfig("example.com", "../../test/data/example.yml")
+		dc, err := s.GetDomainConfig("example.local", "../../test/data/example.yml")
 		Expect(err).ToNot(HaveOccurred())
 
-		ged := dc.GetLoginEmailDomain("second.example.com")
+		ged := dc.GetLoginEmailDomain("second.example.local")
 		Expect(ged.Provider).To(Equal("None"))
+	})
+
+	It("should return true when visitng /test/unauth with example.yml", func() {
+		request, _ := http.NewRequest("GET", "http://example.local/test/unauth", nil)
+
+		res := s.IsUnauthPath(request)
+
+		Expect(res).To(BeTrue())
+	})
+
+	It("should return false when visitng /test/auth with example.yml", func() {
+		request, _ := http.NewRequest("GET", "http://example.local/test/auth", nil)
+
+		res := s.IsUnauthPath(request)
+
+		Expect(res).To(BeFalse())
+	})
+
+	It("should return false when visitng bad host", func() {
+		request, _ := http.NewRequest("GET", "http://not-valid.local/test/unauth", nil)
+
+		res := s.IsUnauthPath(request)
+
+		Expect(res).To(BeFalse())
 	})
 })
