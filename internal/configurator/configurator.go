@@ -110,7 +110,7 @@ func GetDomainConfig(domain string, filename string) (DomainConfig, error) {
 
 // IsUnauthPath will return true if the request domain config matches and authenticated path
 func IsUnauthPath(request *http.Request) bool {
-	var res bool
+	res := false
 
 	dc, err := GetDomainConfigFromRequest(request)
 	if err != nil {

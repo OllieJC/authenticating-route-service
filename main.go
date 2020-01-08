@@ -117,13 +117,19 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 	} else {
 
+		var doBackEndRequest bool
+
 		unauthPath := c.IsUnauthPath(request)
-		cookieValid := false
-		if unauthPath == false {
-			cookieValid, _ = i.CheckCookie(request)
+		d.Debugfln("RoundTrip:1: unauthPath: %t", unauthPath)
+
+		if unauthPath {
+			doBackEndRequest = true
+		} else {
+			doBackEndRequest, _ = i.CheckCookie(request)
+			d.Debugfln("RoundTrip:1: CheckCookie: %t", doBackEndRequest)
 		}
 
-		if unauthPath || cookieValid {
+		if doBackEndRequest {
 
 			d.Debugfln("RoundTrip:2: Forwarding to: %s", request.URL.String())
 
