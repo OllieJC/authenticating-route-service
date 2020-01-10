@@ -3,6 +3,7 @@ package main
 import (
 	i "authenticating-route-service/internal"
 	c "authenticating-route-service/internal/configurator"
+	h "authenticating-route-service/internal/httphelper"
 	d "authenticating-route-service/pkg/debugprint"
 	"bytes"
 	"crypto/tls"
@@ -108,7 +109,7 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 		response, err = i.AuthRequestDecision(request)
 		if err != nil {
-			response = i.HTTPErrorResponse(err)
+			response = h.HTTPErrorResponse(err)
 		}
 
 		// else if part of whitelist:
@@ -135,12 +136,12 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 			response, err = lrt.transport.RoundTrip(request)
 			if err != nil {
-				response = i.HTTPErrorResponse(err)
+				response = h.HTTPErrorResponse(err)
 			}
 
 			body, err := ioutil.ReadAll(response.Body)
 			if err != nil {
-				response = i.HTTPErrorResponse(err)
+				response = h.HTTPErrorResponse(err)
 			} else {
 				response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 			}
@@ -154,8 +155,8 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 		} else {
 
 			d.Debugfln("RoundTrip:2: Redirecting to login page")
-			response = i.EmptyHTTPResponse(request)
-			i.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
+			response = h.EmptyHTTPResponse(request)
+			h.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 		}
 	}
@@ -166,7 +167,7 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 	response.Header.Add(cfProxySignatureHeader, sigHeader)
 	response.Header.Add(cfProxyMetadataHeader, metaHeader)
 
-	i.AddSecurityHeaders(request, response)
+	h.AddSecurityHeaders(request, response)
 
 	d.Debugfln("RoundTrip:3: Responding...")
 

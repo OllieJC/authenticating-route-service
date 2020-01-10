@@ -26,7 +26,7 @@ var _ = Describe("configurator", func() {
 		// if no value set, should default
 		Expect(c.DomainConfigs[1].Enabled).To(Equal(false))
 
-		Expect(c.DomainConfigs[0].LoginEmailDomains[0].Provider).To(Equal("Google"))
+		Expect(c.DomainConfigs[0].LoginEmailDomains[0].Provider).To(Equal("google"))
 
 		printme := false
 		if printme {
@@ -38,9 +38,9 @@ var _ = Describe("configurator", func() {
 				for i, g := range d.LoginEmailDomains {
 					fmt.Printf("g:%d: %s\n", i, g.Domain)
 					fmt.Printf("g:%d: %s\n", i, g.Provider)
+					fmt.Printf("g:%d: %s\n", i, g.OAuthClientID)
+					fmt.Printf("g:%d: %s\n", i, g.OAuthClientSecret)
 				}
-				fmt.Printf(d.GoogleOAuthClientID)
-				fmt.Printf(d.GoogleOAuthClientSecret)
 				fmt.Println(d.SessionCookieName)
 				fmt.Println(d.SessionServerToken)
 
@@ -95,12 +95,28 @@ var _ = Describe("configurator", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should return GoogleEmailDomain from DomainConfig", func() {
+	It("should return LoginEmailDomain from DomainConfig", func() {
 		dc, err := s.GetDomainConfig("example.local", "../../test/data/example.yml")
 		Expect(err).ToNot(HaveOccurred())
 
-		ged := dc.GetLoginEmailDomain("second.example.local")
-		Expect(ged.Provider).To(Equal("None"))
+		ged := dc.GetLoginEmailDomain("second.example.local", "None")
+		Expect(ged.Provider).To(Equal("none"))
+	})
+
+	It("should return correct LoginEmailDomain from DomainConfig", func() {
+		dc, err := s.GetDomainConfig("example.local", "../../test/data/example.yml")
+		Expect(err).ToNot(HaveOccurred())
+
+		ged := dc.GetLoginEmailDomain("third.example.local", "GitHub")
+		Expect(ged.Provider).To(Equal("github"))
+	})
+
+	It("should return multiple providers with GetLoginProviders", func() {
+		dc, err := s.GetDomainConfig("example.local", "../../test/data/example.yml")
+		Expect(err).ToNot(HaveOccurred())
+
+		providers := dc.GetLoginProviders("third.example.local")
+		Expect(len(providers)).Should(BeNumerically("==", 2))
 	})
 
 	It("should return true when visitng /test/unauth with example.yml", func() {

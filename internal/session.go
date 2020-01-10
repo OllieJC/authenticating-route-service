@@ -2,6 +2,7 @@ package internal
 
 import (
 	c "authenticating-route-service/internal/configurator"
+	u "authenticating-route-service/internal/utils"
 	. "authenticating-route-service/pkg/debugprint"
 	"crypto/aes"
 	"crypto/cipher"
@@ -24,7 +25,7 @@ type CustomSession struct {
 
 func NewCustomSession() CustomSession {
 	res := CustomSession{}
-	rb, _ := generateRandomBytes(16, true)
+	rb, _ := u.GenerateRandomBytes(16, true)
 	res.ID = string(rb)
 	res.ExpiryTime = expiryTime().Unix()
 	res.Provider = ""

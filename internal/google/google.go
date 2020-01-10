@@ -1,20 +1,25 @@
-package internal
+package google
 
 import (
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	c "authenticating-route-service/internal/configurator"
+	h "authenticating-route-service/internal/httphelper"
+	u "authenticating-route-service/internal/utils"
 	. "authenticating-route-service/pkg/debugprint"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
-const redirectFormatString = "%s://%s/auth/google/callback"
+// ProviderString is Google
+const ProviderString = "google"
+const redirectFormatString = "%s://%s/auth/callback/google/%s"
 
 // Scopes: OAuth 2.0 scopes provide a way to limit the amount of access that is granted to an access token.
 var googleOauthConfig = &oauth2.Config{
@@ -22,20 +27,25 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint: google.Endpoint,
 }
 
-func setOauthConfig(dc c.DomainConfig) {
+func setOauthConfig(dc c.DomainConfig, emailDomain string) {
 	setVal := ""
-	if dc.Domain != "" {
-		setVal = fmt.Sprintf(redirectFormatString, "https", dc.Domain)
-		googleOauthConfig.RedirectURL = setVal
-		Debugfln("setOauthConfig: Setting RedirectURL to: %s", setVal)
+	if emailDomain != "" {
+		if dc.Domain != "" {
+			setVal = fmt.Sprintf(redirectFormatString, "https", dc.Domain, emailDomain)
+			googleOauthConfig.RedirectURL = setVal
+			Debugfln("setOauthConfig: Setting RedirectURL to: %s", setVal)
+		}
+		gled := dc.GetLoginEmailDomain(emailDomain, ProviderString)
+		if gled.Provider == "google" {
+			googleOauthConfig.ClientID = gled.OAuthClientID
+			googleOauthConfig.ClientSecret = gled.OAuthClientSecret
+		}
 	}
-	googleOauthConfig.ClientID = dc.GoogleOAuthClientID
-	googleOauthConfig.ClientSecret = dc.GoogleOAuthClientSecret
 }
 
 const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
-func OAuthGoogleLogin(response *http.Response, dc c.DomainConfig) {
+func OAuthGoogleLogin(response *http.Response, dc c.DomainConfig, emailDomain string) {
 	Debugfln("OAuthGoogleLogin:1: Start...")
 
 	// Create oauthState cookie
@@ -45,10 +55,10 @@ func OAuthGoogleLogin(response *http.Response, dc c.DomainConfig) {
 	   AuthCodeURL receive state that is a token to protect the user from CSRF attacks. You must always provide a non-empty string and
 	   validate that it matches the the state query parameter on your redirect callback.
 	*/
-	setOauthConfig(dc)
+	setOauthConfig(dc, emailDomain)
 	oAuthUrl := googleOauthConfig.AuthCodeURL(oauthState)
 
-	RedirectResponse(response, http.StatusSeeOther, oAuthUrl)
+	h.RedirectResponse(response, http.StatusSeeOther, oAuthUrl)
 }
 
 func OauthGoogleCallback(request *http.Request, response *http.Response, dc c.DomainConfig) (string, error) {
@@ -64,7 +74,11 @@ func OauthGoogleCallback(request *http.Request, response *http.Response, dc c.Do
 		return "", fmt.Errorf("ERROR: OauthGoogleCallback: state bad")
 	}
 
-	data, err := getUserDataFromGoogle(request.FormValue("code"), dc)
+	escPath := request.URL.EscapedPath()
+	sep := strings.Split(escPath, "/")
+	domain := strings.ToLower(sep[len(sep)-1])
+
+	data, err := getUserDataFromGoogle(request.FormValue("code"), dc, domain)
 	if err != nil {
 		Debugfln("OauthGoogleCallback:err: %#v", err)
 
@@ -91,7 +105,7 @@ func GenerateStateOauthCookie(resp *http.Response) string {
 
 	Debugfln("GenerateStateOauthCookie:1: Adding cookie with time until: %s", expiration.String())
 
-	b, err := generateRandomBytes(16, true)
+	b, err := u.GenerateRandomBytes(16, true)
 	if err != nil {
 		panic(fmt.Sprintf("generateRandomBytes is unavailable: failed with %#v", err))
 	}
@@ -104,11 +118,11 @@ func GenerateStateOauthCookie(resp *http.Response) string {
 	return state
 }
 
-func getUserDataFromGoogle(code string, dc c.DomainConfig) ([]byte, error) {
+func getUserDataFromGoogle(code string, dc c.DomainConfig, emailDomain string) ([]byte, error) {
 	// Use code to get token and get user info from Google.
 	Debugfln("getUserDataFromGoogle:1: Starting...")
 
-	setOauthConfig(dc)
+	setOauthConfig(dc, emailDomain)
 
 	token, err := googleOauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {

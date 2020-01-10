@@ -1,4 +1,4 @@
-package internal
+package httphelper
 
 import (
 	c "authenticating-route-service/internal/configurator"
@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+var TemplatePath = "web/template"
 
 type templatePageData struct {
 	Title      string

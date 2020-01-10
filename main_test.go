@@ -17,6 +17,7 @@ import (
 
 	s "authenticating-route-service"
 	i "authenticating-route-service/internal"
+	g "authenticating-route-service/internal/google"
 )
 
 var _ = Describe("Main", func() {
@@ -177,7 +178,7 @@ var _ = Describe("Main", func() {
 		Expect(res.Header.Get(metaHeader)).To(Equal(expectedMeta))
 	})
 
-	It("should return bad email when post to /auth/google/callback", func() {
+	It("should return bad email when post to /auth/callback/google/{email}", func() {
 		const (
 			notExpectedBody   = "hello"
 			expectedBody      = "state bad"
@@ -205,11 +206,11 @@ var _ = Describe("Main", func() {
 
 		response := &http.Response{}
 		response.Header = http.Header{}
-		cookieStr := i.GenerateStateOauthCookie(response)
+		cookieStr := g.GenerateStateOauthCookie(response)
 		rcookie := response.Header.Get("Set-Cookie")
 
-		reqFeUrl := fmt.Sprintf("%s/auth/google/callback", frontend.URL)
-		reqBeUrl := fmt.Sprintf("%s/auth/google/callback", backend.URL)
+		reqFeUrl := fmt.Sprintf("%s/auth/callback/google/email.example.local", frontend.URL)
+		reqBeUrl := fmt.Sprintf("%s/auth/callback/google/email.example.local", backend.URL)
 
 		req, _ := http.NewRequest("POST", reqFeUrl, nil)
 		req.Header.Add("X-Cf-Forwarded-Url", reqBeUrl)

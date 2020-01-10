@@ -1,11 +1,11 @@
-package internal
+package utils
 
 import (
 	"crypto/rand"
 	"encoding/base64"
 )
 
-func generateRandomBytes(n int, asBase64 bool) ([]byte, error) {
+func GenerateRandomBytes(n int, asBase64 bool) ([]byte, error) {
 	var (
 		b   = make([]byte, n)
 		err error

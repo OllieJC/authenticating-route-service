@@ -1,20 +1,24 @@
-package internal_test
+package httphelper_test
 
 import (
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 
 	//"github.com/jarcoal/httpmock"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s "authenticating-route-service/internal"
+	s "authenticating-route-service/internal/httphelper"
 )
 
 var _ = Describe("HTTPHelper", func() {
+	os.Setenv("DOMAIN_CONFIG_FILEPATH", "../../test/data/example.yml")
+	s.TemplatePath = "../../web/template"
+
 	It("should return an error page with HTTPErrorResponse", func() {
 		const errStr = "Test error."
 		testErr := errors.New(errStr)

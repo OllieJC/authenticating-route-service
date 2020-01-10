@@ -2,13 +2,17 @@ domains:
   - domain: example.local
     auth_pages_title: ""
     enabled: true
-    google_oauth_client_id: "abc"
-    google_oauth_client_secret: "123"
     login_email_domains:
       - domain: email.example.local
-        provider: Google
+        provider: google
+        oauth_client_id: "abc"
+        oauth_client_secret: "123"
       - domain: second.example.local
-        provider: None
+        provider: none
+      - domain: third.example.local
+        provider: google
+      - domain: third.example.local
+        provider: github
     session_cookie_name: "ABC567"
     session_server_token: "DEF890"
     security_headers:

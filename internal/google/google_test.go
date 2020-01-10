@@ -1,7 +1,8 @@
-package internal_test
+package google_test
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -10,8 +11,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s "authenticating-route-service/internal"
 	c "authenticating-route-service/internal/configurator"
+	g "authenticating-route-service/internal/google"
 )
 
 var _ = Describe("Google", func() {
@@ -20,7 +21,7 @@ var _ = Describe("Google", func() {
 
 		r := &http.Response{}
 		r.Header = http.Header{}
-		cookieStr := s.GenerateStateOauthCookie(r)
+		cookieStr := g.GenerateStateOauthCookie(r)
 
 		data, err := base64.StdEncoding.DecodeString(cookieStr)
 
@@ -34,17 +35,19 @@ var _ = Describe("Google", func() {
 		response := &http.Response{}
 		response.Header = http.Header{}
 
-		cookieStr := s.GenerateStateOauthCookie(response)
+		cookieStr := g.GenerateStateOauthCookie(response)
 
 		rcookie := response.Header.Get("Set-Cookie")
-		request := &http.Request{Header: http.Header{"Cookie": []string{rcookie}}}
 
+		path := "/auth/callback/google/email.example.local"
+		request, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
+		request.Header = http.Header{"Cookie": []string{rcookie}}
 		request.Form = url.Values{}
 		request.Form.Add("state", cookieStr)
 		request.Form.Add("code", "xxx")
 
 		dc := c.DomainConfig{Domain: "example.local"}
-		cbResp, err := s.OauthGoogleCallback(request, response, dc)
+		cbResp, err := g.OauthGoogleCallback(request, response, dc)
 
 		Expect(err).To(HaveOccurred())
 		Expect(cbResp).To(Equal(""))
@@ -61,7 +64,7 @@ var _ = Describe("Google", func() {
 
 		r := &http.Response{}
 		r.Header = http.Header{}
-		s.OAuthGoogleLogin(r, dc)
+		g.OAuthGoogleLogin(r, dc, "email.example.local")
 
 		Expect(r.StatusCode).To(Equal(http.StatusSeeOther))
 

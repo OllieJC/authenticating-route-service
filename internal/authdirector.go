@@ -2,6 +2,8 @@ package internal
 
 import (
 	c "authenticating-route-service/internal/configurator"
+	g "authenticating-route-service/internal/google"
+	h "authenticating-route-service/internal/httphelper"
 	. "authenticating-route-service/pkg/debugprint"
 	"bytes"
 	"errors"
@@ -14,8 +16,9 @@ import (
 )
 
 var (
-	errBadMethod error = errors.New("Incorrect method")
-	errBadEmail  error = errors.New("Email address not recognised")
+	errBadMethod   error = errors.New("Incorrect method")
+	errBadEmail    error = errors.New("Email address not recognised")
+	errBadProvider error = errors.New("Provider not recognised")
 )
 
 func AuthIDPDirector(request *http.Request, response *http.Response) error {
@@ -27,23 +30,27 @@ func AuthIDPDirector(request *http.Request, response *http.Response) error {
 	}
 
 	email := request.PostFormValue("email")
-
 	if email == "" {
 		return errBadEmail
+	}
+
+	provider := request.PostFormValue("provider")
+	if provider == "" {
+		return errBadProvider
 	}
 
 	if strings.Contains(email, "@") {
 
 		se := strings.Split(email, "@")
-		domain := se[len(se)-1]
+		domain := strings.ToLower(se[len(se)-1])
 		dc, err := c.GetDomainConfigFromRequest(request)
 		if err != nil {
 			return errBadEmail
 		}
 
-		led := dc.GetLoginEmailDomain(domain)
-		if led.Provider == "Google" {
-			OAuthGoogleLogin(response, dc)
+		led := dc.GetLoginEmailDomain(domain, provider)
+		if led.Provider == "google" {
+			g.OAuthGoogleLogin(response, dc, domain)
 
 			Debugfln("AuthIDPDirector:2: Returning good email.")
 
@@ -117,7 +124,7 @@ func returnAsset(request *http.Request) (*http.Response, error) {
 				// Get the content
 				contentType, err = getFileContentType(fStr)
 				if err != nil {
-					return HTTPErrorResponse(err), err
+					return h.HTTPErrorResponse(err), err
 				}
 			}
 
@@ -137,17 +144,19 @@ func returnAsset(request *http.Request) (*http.Response, error) {
 	}
 
 	err = errors.New("No asset found with that filename")
-	return HTTPNotFoundResponse(err), nil
+	return h.HTTPNotFoundResponse(err), nil
 }
 
 func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 	Debugfln("AuthRequestDecision:1: Starting...")
 
-	response := EmptyHTTPResponse(request)
+	escapedPath := request.URL.EscapedPath()
+
+	response := h.EmptyHTTPResponse(request)
 	var err error
 
-	if strings.HasPrefix(request.URL.Path, "/auth/status") {
+	if strings.HasPrefix(escapedPath, "/auth/status") {
 
 		body := []byte("false")
 		if ok, _ := CheckCookie(request); ok {
@@ -156,71 +165,80 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 		response.StatusCode = http.StatusOK
 		response.Body = ioutil.NopCloser(bytes.NewReader(body))
 
-	} else if strings.HasPrefix(request.URL.Path, "/auth/assets") && request.Method == "GET" {
+	} else if strings.HasPrefix(escapedPath, "/auth/assets") && request.Method == "GET" {
 
 		Debugfln("AuthRequestDecision:2: Asset")
 
 		return returnAsset(request)
 
-	} else if request.URL.Path == "/auth/login" && request.Method == "GET" {
+	} else if escapedPath == "/auth/login" && request.Method == "GET" {
 
 		Debugfln("AuthRequestDecision:3: GET /auth/login")
 
-		tpd := NewTemplatePageData()
+		tpd := h.NewTemplatePageData()
 		tpd.Title = "Login"
-		response, err = TemplateResponse("login.html", http.StatusOK, tpd)
+		response, err = h.TemplateResponse("login.html", http.StatusOK, tpd)
 		if err != nil {
-			return HTTPErrorResponse(err), err
+			return h.HTTPErrorResponse(err), err
 		}
 
-	} else if request.URL.Path == "/auth/logout" {
+	} else if escapedPath == "/auth/logout" {
 
 		Debugfln("AuthRequestDecision:3: GET /auth/logout")
 
 		RemoveCookie(request, response)
-		RedirectResponse(response, http.StatusSeeOther, "/auth/login")
+		h.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
-	} else if request.URL.Path == "/auth/login" && request.Method == "POST" {
+	} else if escapedPath == "/auth/login" && request.Method == "POST" {
 
 		Debugfln("AuthRequestDecision:4: POST /auth/login")
 
 		err = AuthIDPDirector(request, response)
 
 		if err == errBadEmail {
-			tpd := NewTemplatePageData()
+			tpd := h.NewTemplatePageData()
 			tpd.Title = "Bad Email"
-			response, err = TemplateResponse("bad-email.html", http.StatusUnauthorized, tpd)
+			response, err = h.TemplateResponse("bad-email.html", http.StatusUnauthorized, tpd)
 		}
 
 		if err != nil {
 			Debugfln("AuthRequestDecision:4:err: %s", err.Error())
 
-			return HTTPErrorResponse(err), err
+			return h.HTTPErrorResponse(err), err
 		}
 
-	} else if request.URL.Path == "/auth/google/callback" {
+	} else if strings.HasPrefix(escapedPath, "/auth/callback") {
 
-		Debugfln("AuthRequestDecision:5: /auth/google/callback")
+		Debugfln("AuthRequestDecision:5: /auth/callback")
 
 		dc, err := c.GetDomainConfigFromRequest(request)
 		if err != nil {
-			return HTTPErrorResponse(err), err
-		}
-		cbResp, err := OauthGoogleCallback(request, response, dc)
-
-		if err != nil {
-			Debugfln("AuthRequestDecision:5:err: %s", err.Error())
-
-			return HTTPErrorResponse(err), err
+			return h.HTTPErrorResponse(err), err
 		}
 
-		AddCookie(request, response, "Google", cbResp)
-		RedirectResponse(response, http.StatusSeeOther, "/")
+		sep := strings.Split(escapedPath, "/")
+		provider := sep[3]
+
+		var cbResp string
+
+		if provider == g.ProviderString { // this should be google.ProviderString
+			cbResp, err = g.OauthGoogleCallback(request, response, dc)
+			if err != nil {
+				Debugfln("AuthRequestDecision:5:err: %s", err.Error())
+
+				return h.HTTPErrorResponse(err), err
+			}
+		}
+
+		if cbResp != "" {
+			AddCookie(request, response, provider, cbResp)
+			h.RedirectResponse(response, http.StatusSeeOther, "/")
+		}
 
 	} else {
 		Debugfln("AuthRequestDecision:6: Response not found")
 
-		response = HTTPNotFoundResponse(nil)
+		response = h.HTTPNotFoundResponse(nil)
 	}
 
 	Debugfln("AuthRequestDecision:7: Returning response")

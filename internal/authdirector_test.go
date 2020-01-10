@@ -36,7 +36,8 @@ var _ = Describe("AuthDirector", func() {
 
 		It("should return an error with an invalid email domain", func() {
 			req.PostForm = url.Values{
-				"email": {"test@invalid.uk"},
+				"email":    {"test@invalid.uk"},
+				"provider": {"google"},
 			}
 			err := s.AuthIDPDirector(req, resp)
 
@@ -46,7 +47,8 @@ var _ = Describe("AuthDirector", func() {
 		It("should return an redirect with a valid email domain", func() {
 
 			req.PostForm = url.Values{
-				"email": {"test@email.example.local"},
+				"email":    {"test@email.example.local"},
+				"provider": {"google"},
 			}
 			err := s.AuthIDPDirector(req, resp)
 
@@ -100,7 +102,8 @@ var _ = Describe("AuthDirector", func() {
 			req, _ := http.NewRequest("POST", fmt.Sprintf("http://example.local%s", path), nil)
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 			req.PostForm = url.Values{
-				"email": {"test@email.example.local"},
+				"email":    {"test@email.example.local"},
+				"provider": {"google"},
 			}
 
 			resp, err := s.AuthRequestDecision(req)
@@ -222,6 +225,22 @@ var _ = Describe("AuthDirector", func() {
 
 			expectedYear := strconv.Itoa(time.Now().AddDate(-1, -1, -1).Year())
 			Expect(cookieRaw).Should(ContainSubstring(expectedYear))
+		})
+
+		It("should return a Google redirect when get '/auth/callback/google/{email}'", func() {
+			const (
+				path     = "/auth/callback/google/email.example.local"
+				expected = `OauthGoogleCallback: state bad`
+			)
+
+			var err error
+
+			req, _ := http.NewRequest("GET", fmt.Sprintf("http://example.local%s", path), nil)
+
+			resp, err := s.AuthRequestDecision(req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(expected))
+			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
 		})
 	})
 })

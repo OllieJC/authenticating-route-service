@@ -1,4 +1,4 @@
-package main_test
+package httphelper_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -9,5 +9,5 @@ import (
 
 func TestDebugprint(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Main Suite")
+	RunSpecs(t, "HTTP Helper Suite")
 }

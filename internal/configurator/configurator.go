@@ -12,22 +12,22 @@ import (
 
 // LoginEmailDomain is a type which contains Google oauth settings
 type LoginEmailDomain struct {
-	Domain   string `yaml:"domain"`
-	Provider string `yaml:"provider"`
+	Domain            string `yaml:"domain"`
+	Provider          string `yaml:"provider"`
+	OAuthClientID     string `yaml:"oauth_client_id"`
+	OAuthClientSecret string `yaml:"oauth_client_secret"`
 }
 
 // DomainConfig is the type which an entire site's config is within
 type DomainConfig struct {
-	Domain                  string             `yaml:"domain"`
-	AuthPageTitle           string             `yaml:"auth_pages_title"`
-	Enabled                 bool               `yaml:"enabled"`
-	GoogleOAuthClientID     string             `yaml:"google_oauth_client_id"`
-	GoogleOAuthClientSecret string             `yaml:"google_oauth_client_secret"`
-	LoginEmailDomains       []LoginEmailDomain `yaml:"login_email_domains"`
-	SessionCookieName       string             `yaml:"session_cookie_name"`
-	SessionServerToken      string             `yaml:"session_server_token"`
-	SecurityHeaders         map[string]string  `yaml:"security_headers"`
-	UnauthenticatedPaths    []string           `yaml:"unauthenticated_paths"`
+	Domain               string             `yaml:"domain"`
+	AuthPageTitle        string             `yaml:"auth_pages_title"`
+	Enabled              bool               `yaml:"enabled"`
+	LoginEmailDomains    []LoginEmailDomain `yaml:"login_email_domains"`
+	SessionCookieName    string             `yaml:"session_cookie_name"`
+	SessionServerToken   string             `yaml:"session_server_token"`
+	SecurityHeaders      map[string]string  `yaml:"security_headers"`
+	UnauthenticatedPaths []string           `yaml:"unauthenticated_paths"`
 }
 
 // Config is the master configuration type, it has an array of DomainConfig objects
@@ -69,7 +69,7 @@ func GetDomainConfigFromRequest(request *http.Request) (DomainConfig, error) {
 func (c Config) Get(domain string) DomainConfig {
 	var dc DomainConfig
 	for _, d := range c.DomainConfigs {
-		if domain == d.Domain && d.Enabled {
+		if strings.ToLower(domain) == strings.ToLower(d.Domain) && d.Enabled {
 			dc = d
 			break
 		}
@@ -78,15 +78,26 @@ func (c Config) Get(domain string) DomainConfig {
 }
 
 // GetLoginEmailDomain returns the GoogleEmailDomain for a specific domain out of DomainConfig
-func (c DomainConfig) GetLoginEmailDomain(domain string) LoginEmailDomain {
+func (c DomainConfig) GetLoginEmailDomain(domain string, provider string) LoginEmailDomain {
 	var led LoginEmailDomain
 	for _, d := range c.LoginEmailDomains {
-		if domain == d.Domain {
+		if strings.ToLower(domain) == strings.ToLower(d.Domain) && strings.ToLower(provider) == strings.ToLower(d.Provider) {
 			led = d
 			break
 		}
 	}
 	return led
+}
+
+// GetLoginProviders returns the providers for a specific domain out of DomainConfig
+func (c DomainConfig) GetLoginProviders(domain string) []string {
+	var res []string
+	for _, d := range c.LoginEmailDomains {
+		if strings.ToLower(domain) == strings.ToLower(d.Domain) {
+			res = append(res, strings.ToLower(d.Provider))
+		}
+	}
+	return res
 }
 
 // GetDomainConfig returns DomainConfig (and error) from domain and filepath

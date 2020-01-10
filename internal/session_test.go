@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	s "authenticating-route-service/internal"
+	h "authenticating-route-service/internal/httphelper"
 )
 
 func parseCookieTime(rawCookieStr string) (time.Time, error) {
@@ -48,7 +49,7 @@ var _ = Describe("Sessions", func() {
 	It("should add a cookie with AddCookie", func() {
 
 		request := httptest.NewRequest("GET", "http://example.local/auth/google/callback", nil)
-		response := s.EmptyHTTPResponse(request)
+		response := h.EmptyHTTPResponse(request)
 
 		s.AddCookie(request, response, "Test", "abc123")
 
@@ -69,7 +70,7 @@ var _ = Describe("Sessions", func() {
 	})
 
 	It("should set expiry in past with RemoveCookie", func() {
-		response := s.EmptyHTTPResponse(nil)
+		response := h.EmptyHTTPResponse(nil)
 
 		request, _ := http.NewRequest("GET", "http://example.local", nil)
 
@@ -129,7 +130,7 @@ var _ = Describe("Sessions", func() {
 		cookie := http.Cookie{Name: "_session", Value: encString}
 		request := &http.Request{Header: http.Header{"Cookie": []string{cookie.String()}}}
 
-		response := s.EmptyHTTPResponse(nil)
+		response := h.EmptyHTTPResponse(nil)
 		s.AddCookie(request, response, "", "")
 
 		cookieInResponse := response.Header.Get("Set-Cookie")
