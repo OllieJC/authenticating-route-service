@@ -8,7 +8,7 @@ do
   cd $F
   go test
   if [ $? -ne 0 ]; then
-    exit $?
+    exit 20
   fi
   cd $HLP
 done
