@@ -19,30 +19,17 @@ This example route service uses the new headers/features that have been added to
 - Bind the route service to the route (domain/hostname)
 - Go to "/" and you should get redirected to "/auth/login"
 
-## Environment Variables
+## Configuration
 
-### GOOGLE_OAUTH_CLIENT_ID
+See [configurator](config/README.md).
 
-```sh
-cf set-env authenticating-route-service GOOGLE_OAUTH_CLIENT_ID xxx
-cf restage authenticating-route-service
+## Adding route service to an app
+
 ```
+# ensure the space has a user-provided-service reference
+cf create-user-provided-service authenticating-route-service -r https://xxx
+# where xxx is the route service endpoint
 
-### GOOGLE_OAUTH_CLIENT_SECRET
-
-```sh
-cf set-env authenticating-route-service GOOGLE_OAUTH_CLIENT_SECRET xxx
-cf restage authenticating-route-service
-```
-
-### SKIP_SSL_VALIDATION
-
-Set this environment variable to true in order to skip the validation of SSL certificates.
-By default the route service will attempt to validate certificates.
-
-Example:
-
-```sh
-cf set-env authenticating-route-service SKIP_SSL_VALIDATION true
-cf restart authenticating-route-service
+# bind the app in the space to the user-provided-service in that space
+cf bind-route-service DOMAIN --hostname APP_HOSTNAME authenticating-route-service
 ```
