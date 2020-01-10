@@ -82,7 +82,7 @@ var _ = Describe("Main", func() {
 
 	It("should respond to an unauth path with the 'X-Cf-Forwarded-Url' and no session set", func() {
 		const (
-			expected          = "no such host"
+			expected          = "lookup example.local"
 			skipSslValidation = false
 			sigHeader         = "X-CF-Proxy-Signature"
 			metaHeader        = "X-CF-Proxy-Metadata"
