@@ -16,6 +16,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -112,10 +113,6 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 			response = h.HTTPErrorResponse(err)
 		}
 
-		// else if part of whitelist:
-		// e.g. /api/pages.json
-		// set in the config
-
 	} else {
 
 		var doBackEndRequest bool
@@ -156,6 +153,21 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 			d.Debugfln("RoundTrip:2: Redirecting to login page")
 			response = h.EmptyHTTPResponse(request)
+
+			if true { //c.IsPathRedirectionEnabled(request) {
+				d.Debugfln("RoundTrip:2: Add redirect cookie")
+
+				cookie := &http.Cookie{
+					Name:     "_redirectPath",
+					Value:    request.URL.EscapedPath(),
+					Expires:  time.Now().Add(2 * time.Hour),
+					Path:     "/",
+					Domain:   request.URL.Hostname(),
+					HttpOnly: true,
+				}
+				response.Header.Add("Set-Cookie", cookie.String())
+			}
+
 			h.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 		}
