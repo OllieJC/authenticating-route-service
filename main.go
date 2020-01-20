@@ -159,7 +159,7 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 				d.Debugfln("RoundTrip:2: Add redirect cookie")
 
 				cookie := &http.Cookie{
-					Name:     "_redirectPath",
+					Name:     redirectCookieName,
 					Value:    request.URL.RequestURI(),
 					Expires:  time.Now().Add(2 * time.Hour),
 					Path:     "/",
@@ -174,7 +174,8 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 		}
 	}
 
-	if request.Header.Get(redirectCookieName) != "" {
+	_, err = request.Cookie(redirectCookieName)
+	if err == nil {
 		h.RemoveCookie(response, redirectCookieName)
 	}
 
