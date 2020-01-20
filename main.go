@@ -174,11 +174,6 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 		}
 	}
 
-	_, err = request.Cookie(redirectCookieName)
-	if err == nil {
-		h.RemoveCookie(response, redirectCookieName)
-	}
-
 	sigHeader := request.Header.Get(cfProxySignatureHeader)
 	metaHeader := request.Header.Get(cfProxyMetadataHeader)
 

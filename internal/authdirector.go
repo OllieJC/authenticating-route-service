@@ -15,6 +15,10 @@ import (
 	"strings"
 )
 
+const (
+	redirectCookieName = "_redirectPath"
+)
+
 var (
 	errBadMethod   error = errors.New("Incorrect method")
 	errBadEmail    error = errors.New("Email address not recognised")
@@ -230,7 +234,13 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 			}
 		}
 
-		redirectPath := h.RedirectCookieURI(request, response, "_redirectPath")
+		redirectPath := "/"
+
+		_, err = request.Cookie(redirectCookieName)
+		if err == nil {
+			redirectPath = h.RedirectCookieURI(request, response, redirectCookieName)
+			h.RemoveCookie(response, redirectCookieName)
+		}
 
 		if cbResp != "" {
 			AddCookie(request, response, provider, cbResp)
