@@ -186,7 +186,7 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 		Debugfln("AuthRequestDecision:3: GET /auth/logout")
 
-		RemoveCookie(request, response)
+		h.RemoveCookie(request, response, GetSessionCookieName(request))
 		h.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 	} else if escapedPath == "/auth/login" && request.Method == "POST" {
@@ -221,7 +221,7 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 
 		var cbResp string
 
-		if provider == g.ProviderString { // this should be google.ProviderString
+		if provider == g.ProviderString {
 			cbResp, err = g.OauthGoogleCallback(request, response, dc)
 			if err != nil {
 				Debugfln("AuthRequestDecision:5:err: %s", err.Error())
@@ -230,9 +230,11 @@ func AuthRequestDecision(request *http.Request) (*http.Response, error) {
 			}
 		}
 
+		redirectPath := h.RedirectCookieURI(request, response, "_redirectPath")
+
 		if cbResp != "" {
 			AddCookie(request, response, provider, cbResp)
-			h.RedirectResponse(response, http.StatusSeeOther, "/")
+			h.RedirectResponse(response, http.StatusSeeOther, redirectPath)
 		}
 
 	} else {

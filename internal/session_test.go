@@ -69,26 +69,6 @@ var _ = Describe("Sessions", func() {
 		Expect(t.Unix()).Should(BeNumerically("<", time.Now().Add(7*time.Hour).Unix()))
 	})
 
-	It("should set expiry in past with RemoveCookie", func() {
-		response := h.EmptyHTTPResponse(nil)
-
-		request, _ := http.NewRequest("GET", "http://example.local", nil)
-
-		s.RemoveCookie(request, response)
-
-		cookieRawVal := response.Header.Get("Set-Cookie")
-		Expect(cookieRawVal).ToNot(BeNil())
-
-		t, err := parseCookieTime(cookieRawVal)
-		Expect(err).NotTo(HaveOccurred())
-
-		// cookie time should not equal the default time
-		Expect(t.Unix()).ShouldNot(BeEquivalentTo(-62135596800))
-
-		// cookie time should be less than current time
-		Expect(t.Unix()).Should(BeNumerically("<", time.Now().Unix()))
-	})
-
 	It("should check a cookie value in a request", func() {
 		const (
 			testString = "Testing123."

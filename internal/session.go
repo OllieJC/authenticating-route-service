@@ -179,7 +179,13 @@ func AddCookie(request *http.Request, response *http.Response, provider string, 
 	}
 
 	expiryTime := expiryTime()
-	cookie := &http.Cookie{Name: GetSessionCookieName(request), Value: encString, Expires: expiryTime, Path: "/"}
+	cookie := &http.Cookie{
+		Name:     GetSessionCookieName(request),
+		Value:    encString,
+		Expires:  expiryTime,
+		Path:     "/",
+		HttpOnly: true,
+	}
 	response.Header.Add("Set-Cookie", cookie.String())
 
 	Debugfln("AddCookie: Setting '%s'", GetSessionCookieName(request))
@@ -188,12 +194,4 @@ func AddCookie(request *http.Request, response *http.Response, provider string, 
 
 func expiryTime() time.Time {
 	return time.Now().Add(6 * time.Hour)
-}
-
-func RemoveCookie(request *http.Request, response *http.Response) {
-	Debugfln("RemoveCookie: Starting...")
-
-	expiryTime := time.Now().AddDate(-1, -1, -1)
-	cookie := &http.Cookie{Name: GetSessionCookieName(request), Value: "", Expires: expiryTime, Path: "/", MaxAge: -1}
-	response.Header.Add("Set-Cookie", cookie.String())
 }

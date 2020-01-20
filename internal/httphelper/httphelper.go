@@ -8,8 +8,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var TemplatePath = "web/template"
@@ -120,4 +122,25 @@ func addSecurityHeader(response *http.Response, header string, defaultStr string
 	} else if val != noSetSecOpt {
 		response.Header.Add(header, val)
 	}
+}
+
+func RemoveCookie(request *http.Request, response *http.Response, cookieName string) {
+	expiryTime := time.Now().AddDate(-1, -1, -1)
+	cookie := &http.Cookie{Name: cookieName, Value: "", Expires: expiryTime, Path: "/", MaxAge: -1}
+	response.Header.Add("Set-Cookie", cookie.String())
+}
+
+func RedirectCookieURI(request *http.Request, response *http.Response, cookieName string) string {
+	redirectPath := "/"
+
+	redCookie, err := request.Cookie(cookieName)
+	if err == nil {
+		uPath, err := url.Parse(redCookie.Value)
+		if err == nil {
+			redirectPath = uPath.RequestURI()
+		}
+		RemoveCookie(request, response, cookieName)
+	}
+
+	return redirectPath
 }
