@@ -111,7 +111,13 @@ func GenerateStateOauthCookie(resp *http.Response) string {
 	}
 
 	state := string(b)
-	cookie := http.Cookie{Name: "oauthstate", Value: state, Expires: expiration}
+	cookie := http.Cookie{
+		Name:     "oauthstate",
+		Value:    state,
+		Expires:  expiration,
+		HttpOnly: true,
+		Secure:   true,
+	}
 
 	resp.Header.Add("Set-Cookie", cookie.String())
 

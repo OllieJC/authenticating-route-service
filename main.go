@@ -163,7 +163,6 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 					Value:    request.URL.RequestURI(),
 					Expires:  time.Now().Add(2 * time.Hour),
 					Path:     "/",
-					Domain:   request.URL.Hostname(),
 					HttpOnly: true,
 					Secure:   true,
 				}
