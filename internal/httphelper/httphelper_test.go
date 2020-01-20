@@ -109,9 +109,7 @@ var _ = Describe("HTTPHelper", func() {
 	It("should set expiry in past with RemoveCookie", func() {
 		response := s.EmptyHTTPResponse(nil)
 
-		request, _ := http.NewRequest("GET", "http://example.local", nil)
-
-		s.RemoveCookie(request, response, "_session")
+		s.RemoveCookie(response, "_session")
 
 		cookieRawVal := response.Header.Get("Set-Cookie")
 		Expect(cookieRawVal).ToNot(BeNil())
@@ -146,10 +144,6 @@ var _ = Describe("HTTPHelper", func() {
 
 		resPath := s.RedirectCookieURI(request, response, redCookieName)
 		Expect(resPath).To(Equal("/testing123/abc"))
-
-		sc := response.Header["Set-Cookie"]
-		Expect(sc).ToNot(BeNil())
-		Expect(sc[0]).To(ContainSubstring(redCookieName))
 	})
 
 	It("should return default path with no cookie set and RedirectCookiePath", func() {
@@ -161,10 +155,6 @@ var _ = Describe("HTTPHelper", func() {
 
 		resPath := s.RedirectCookieURI(request, response, redCookieName)
 		Expect(resPath).To(Equal("/testing123/abc?test=123&abc=456"))
-
-		sc := response.Header["Set-Cookie"]
-		Expect(sc).ToNot(BeNil())
-		Expect(sc[0]).To(ContainSubstring(redCookieName))
 	})
 
 	It("should return default path with no cookie set and RedirectCookiePath", func() {
@@ -176,9 +166,5 @@ var _ = Describe("HTTPHelper", func() {
 
 		resPath := s.RedirectCookieURI(request, response, redCookieName)
 		Expect(resPath).To(Equal("/testing123/def"))
-
-		sc := response.Header["Set-Cookie"]
-		Expect(sc).ToNot(BeNil())
-		Expect(sc[0]).To(ContainSubstring(redCookieName))
 	})
 })

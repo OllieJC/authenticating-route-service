@@ -24,6 +24,7 @@ const (
 	cfForwardedURLHeader   = "X-Cf-Forwarded-Url"
 	cfProxySignatureHeader = "X-Cf-Proxy-Signature"
 	cfProxyMetadataHeader  = "X-CF-Proxy-Metadata"
+	redirectCookieName     = "_redirectPath"
 )
 
 func main() {
@@ -159,11 +160,12 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 
 				cookie := &http.Cookie{
 					Name:     "_redirectPath",
-					Value:    request.URL.EscapedPath(),
+					Value:    request.URL.RequestURI(),
 					Expires:  time.Now().Add(2 * time.Hour),
 					Path:     "/",
 					Domain:   request.URL.Hostname(),
 					HttpOnly: true,
+					Secure:   true,
 				}
 				response.Header.Add("Set-Cookie", cookie.String())
 			}
@@ -171,6 +173,10 @@ func (lrt *AuthRoundTripper) RoundTrip(request *http.Request) (response *http.Re
 			h.RedirectResponse(response, http.StatusSeeOther, "/auth/login")
 
 		}
+	}
+
+	if request.Header.Get(redirectCookieName) != "" {
+		h.RemoveCookie(response, redirectCookieName)
 	}
 
 	sigHeader := request.Header.Get(cfProxySignatureHeader)

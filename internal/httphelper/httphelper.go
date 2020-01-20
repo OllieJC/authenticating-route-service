@@ -124,9 +124,17 @@ func addSecurityHeader(response *http.Response, header string, defaultStr string
 	}
 }
 
-func RemoveCookie(request *http.Request, response *http.Response, cookieName string) {
+func RemoveCookie(response *http.Response, cookieName string) {
 	expiryTime := time.Now().AddDate(-1, -1, -1)
-	cookie := &http.Cookie{Name: cookieName, Value: "", Expires: expiryTime, Path: "/", MaxAge: -1}
+	cookie := &http.Cookie{
+		Name:     cookieName,
+		Value:    "",
+		Expires:  expiryTime,
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+	}
 	response.Header.Add("Set-Cookie", cookie.String())
 }
 
@@ -139,7 +147,6 @@ func RedirectCookieURI(request *http.Request, response *http.Response, cookieNam
 		if err == nil {
 			redirectPath = uPath.RequestURI()
 		}
-		RemoveCookie(request, response, cookieName)
 	}
 
 	return redirectPath

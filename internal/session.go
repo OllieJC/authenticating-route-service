@@ -185,6 +185,7 @@ func AddCookie(request *http.Request, response *http.Response, provider string, 
 		Expires:  expiryTime,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   true,
 	}
 	response.Header.Add("Set-Cookie", cookie.String())
 
